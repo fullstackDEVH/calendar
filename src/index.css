@@ -1,0 +1,27 @@
+/* @import 'react-big-calendar/lib/sass/styles';
+@import 'react-big-calendar/lib/addons/dragAndDrop/styles'; */
+
+#root {
+  width: 100vw;
+  height: 100vh;
+}
+
+.schedule-control-section {
+  height: 100%;
+}
+
+.col-lg-9.control-section {
+  height: 100%;
+}
+
+.control-wrapper {
+  height: 100%;
+}
+
+.e-control.e-schedule {
+  height: 100%;
+}
+
+.rbc-timeslot-group {
+  position: relative;
+}
