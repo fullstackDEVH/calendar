@@ -11,11 +11,26 @@ import React, {
   FunctionComponent,
   MouseEvent,
   useCallback,
+  useEffect,
   useMemo,
   useState,
 } from "react";
 
 const localizer = dayjsLocalizer(dayjs);
+
+interface IService {
+  name: string;
+  time: string;
+}
+
+const servicesData: IService[] = [
+  { name: "service 1", time: "30 min" },
+  { name: "service 2", time: "15 min" },
+  { name: "service 3", time: "20 min" },
+  { name: "service 4", time: "60 min" },
+  { name: "service 5", time: "30 min" },
+  { name: "service 6", time: "90 min" },
+];
 
 const resourceMap = [
   {
@@ -48,90 +63,94 @@ interface IEvent {
   start: Date;
   end: Date;
   resourceId: number | number[];
+  data: IService[];
 }
 
-const events: IEvent[] = [
-  {
-    id: 0,
-    title: "Board meeting",
-    start: new Date(now.year(), now.month(), now.date(), 9, 0, 0),
-    end: new Date(now.year(), now.month(), now.date(), 13, 0, 0),
-    resourceId: 1,
-  },
-  {
-    id: 1,
-    title: "MS training",
-    start: new Date(now.year(), now.month(), now.date(), 14, 0, 0),
-    end: new Date(now.year(), now.month(), now.date(), 16, 30, 0),
-    resourceId: 2,
-  },
-  {
-    id: 2,
-    title: "Team lead meeting",
-    start: new Date(now.year(), now.month(), now.date(), 8, 30, 0),
-    end: new Date(now.year(), now.month(), now.date(), 12, 30, 0),
-    resourceId: [2, 3],
-  },
-  {
-    id: 11,
-    title: "Birthday Party",
-    start: new Date(
-      now.add(1, "day").year(),
-      now.add(1, "day").month(),
-      now.add(1, "day").date(),
-      7,
-      0,
-      0
-    ),
-    end: new Date(
-      now.add(1, "day").year(),
-      now.add(1, "day").month(),
-      now.add(1, "day").date(),
-      10,
-      30,
-      0
-    ),
-    resourceId: 4,
-  },
-];
-
 const MyCalendar = () => {
-  const [value, onChange] = useState<string>("");
+  const [date, onChange] = useState<string>("");
 
-  const [myEvents, setEvents] = useState(events);
+  const [myEvents, setEvents] = useState<IEvent[]>([]);
+
+  const [event, setEvent] = useState<IEvent | null>(null);
+
   const [selectectedResource, setSelectedResource] = useState<number | null>(
     null
   );
   const [time, setTime] = useState<string>("");
+  const [selectedService, setSelectedServices] = useState<string[]>([]);
 
-  const handleSelectSlot = useCallback(
-    (slot: SlotInfo) => {
-      console.log(slot);
-      const title = window.prompt("New Event name");
+  useEffect(() => {
+    if (!date || !time || !selectectedResource || selectedService.length < 1)
+      return;
 
-      if (title) {
-        const event: IEvent = {
-          start: slot.start,
-          end: slot.end,
-          title: title,
-          resourceId: slot.resourceId as number,
-          id: 10,
-        };
-        setEvents((prev) => [...prev, event]);
+    const startDay = dayjs(`${dayjs().format("YYYY-MM-DD")}T${time}`).toDate();
+    const totalMinutes = selectedService.reduce((acc, time) => {
+      const minutes = parseInt(time.split(" ")[0], 10);
+      return acc + minutes;
+    }, 0);
+    const endDay = dayjs(startDay).add(totalMinutes, "minute").toDate();
+
+    setEvent({
+      id: -9999,
+      title: "title",
+      start: startDay,
+      end: endDay,
+      resourceId: selectectedResource,
+      data: selectedService.map((service) => ({
+        name: service,
+        time: service,
+      })),
+    });
+  }, [date, time, selectectedResource, selectedService]);
+
+  const handleChangeServices = (
+    event: React.ChangeEvent<HTMLSelectElement>
+  ) => {
+    setSelectedServices((pre) => {
+      let newData = [...pre];
+      const find = pre.find((pre) => pre === event.target.value);
+
+      if (find) {
+        newData = newData.filter((data) => data !== find);
+      } else {
+        newData.push(event.target.value);
       }
-    },
-    [setEvents]
-  );
-  const [state, setState] = useState(false);
+
+      return newData;
+    });
+  };
+
+  // const handleSelectSlot = useCallback(
+  //   (slot: SlotInfo) => {
+  //     console.log(slot);
+  //     const title = window.prompt("New Event name");
+
+  //     if (title) {
+  //       const event: IEvent = {
+  //         start: slot.start,
+  //         end: slot.end,
+  //         title: title,
+  //         resourceId: slot.resourceId as number,
+  //         id: 10,
+  //       };
+  //       setEvents((prev) => [...prev, event]);
+  //     }
+  //   },
+  //   [setEvents]
+  // );
   const handleSelectEvent = useCallback(
     (event: IEvent) => window.alert(event.title),
     []
   );
 
-  const { defaultDate, scrollToTime } = useMemo(
+  const { defaultDate, scrollToTime, formats } = useMemo(
     () => ({
       defaultDate: dayjs().toDate(),
-      scrollToTime: new Date(1970, 1, 1, 6),
+      scrollToTime: dayjs().startOf("day").toDate(),
+      formats: {
+        timeGutterFormat: (date: any, culture: any, localizer: any) =>
+          localizer.format(date, "HH:mm", culture),
+      },
     }),
     []
   );
@@ -140,7 +159,7 @@ const MyCalendar = () => {
   const onView = useCallback((newView: View) => setView(newView), [setView]);
 
   const dayPropGetter = useCallback((date, resourceId) => {
-    console.log(resourceId);
+    // console.log(resourceId);
     // ({
     //   ...(moment(date).day() === 2 && {
     //     className: 'tuesday',
@@ -169,41 +188,124 @@ const MyCalendar = () => {
     return (newTotal / 960) * 100;
   };
 
+  const handleClick = () => {
+    if (!event) return;
+    setEvents((pre) => [...pre, event]);
+    setEvent(null);
+    setTime("");
+    setSelectedServices([]);
+    setSelectedResource(null);
+  };
+
   return (
-    <div>
-      <input
-        type="date"
-        name=""
-        id=""
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      />
-      <input type="time" value={time} onChange={handleTimeChange} />
-      <div style={{ width: "100%", height: "100%" }}>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        width: "100vw",
+        height: "100vh",
+        overflow: "hidden",
+      }}
+    >
+      <div style={{ display: "flex", gap: "20px", marginBottom: 30 }}>
+        <input
+          type="date"
+          name=""
+          id=""
+          value={date}
+          onChange={(e) => onChange(e.target.value)}
+        />
+        <input type="time" value={time} onChange={handleTimeChange} />
+
+        <select onChange={(e) => setSelectedResource(+e.target.value)}>
+          {resourceMap.map((resource) => (
+            <option value={resource.resourceId}>
+              {resource.resourceTitle}
+            </option>
+          ))}
+        </select>
+
+        <select
+          multiple={true}
+          value={selectedService}
+          onChange={handleChangeServices}
+        >
+          {servicesData.map((service) => (
+            <option value={service.time}>{service.name}</option>
+          ))}
+        </select>
+
+        <button onClick={handleClick}>Confirm</button>
+      </div>
+      <div
+        style={{ width: "100%", height: "100%", flex: 1, overflow: "hidden" }}
+      >
         <Calendar
           localizer={localizer}
           onView={onView}
           view={view}
-          date={value ? dayjs(value).toDate() : dayjs().toDate()}
+          date={date ? dayjs(date).toDate() : dayjs().toDate()}
           allDayMaxRows={4}
           // dayPropGetter={dayPropGetter}
-          slotPropGetter={(date, resourceId) => {
+          toolbar={false}
+          formats={formats}
+          slotPropGetter={(_, resourceId) => {
             return {
               style: {
+                height: 80,
                 backgroundColor:
                   resourceId === selectectedResource ? "pink" : "unset",
-                border:
-                  dayjs(date).toDate() === dayjs().toDate()
-                    ? "1px solid red"
-                    : "",
               },
             };
           }}
           components={{
+            timeGutterHeader: () => {
+              return dayjs(`${dayjs().format("YYYY-MM-DD")}T${time}`).format(
+                "dddd MMM DD"
+              );
+            },
+            timeGutterWrapper: (pre: any) => {
+              const children: JSX.Element = pre.children;
+              return React.cloneElement(
+                children,
+                { style: { possition: "relative" } },
+                <>
+                  {pre.children}
+                  {time ? (
+                    <div
+                      id="rbc-current-time-from-12"
+                      style={{
+                        position: "absolute",
+                        zIndex: 10,
+                        right: 0,
+                        height: 20,
+                        width: 40,
+                        borderRadius: 8,
+                        transform: "translateY(-50%)",
+                        border: "1px solid red",
+                        top: `${calcTop()}%`,
+                        background: "rgba(255,255,255,0.1)",
+                        backdropFilter: "blur(10px)",
+                      }}
+                    >
+                      <div style={{ color: "red", fontWeight: 600 }}>
+                        {time}
+                      </div>
+                    </div>
+                  ) : null}
+                </>
+              );
+            },
             event: (p) => {
-              // console.log(p);
+              const services: IService[] = p.event.data;
 
-              return null;
+              return (
+                <div>
+                  {services.map((service, index) => (
+                    <div key={index}>{service.name}</div>
+                  ))}
+                </div>
+              );
             },
             // eventWrapper: (dataa : any) => {
             //   console.log(dataa);
@@ -293,7 +395,7 @@ const MyCalendar = () => {
           resourceIdAccessor="resourceId"
           resources={resourceMap}
           resourceTitleAccessor="resourceTitle"
-          events={myEvents}
+          events={event ? myEvents.concat([event]) : myEvents}
           // startAccessor="start"
           // endAccessor="end"
           style={{ height: "100%" }}

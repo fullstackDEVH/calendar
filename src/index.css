@@ -1,6 +1,11 @@
 /* @import 'react-big-calendar/lib/sass/styles';
 @import 'react-big-calendar/lib/addons/dragAndDrop/styles'; */
-
+body{
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+}
 #root {
   width: 100vw;
   height: 100vh;
@@ -22,6 +27,22 @@
   height: 100%;
 }
 
+.rbc-time-slot {
+  text-align: left;
+}
+
 .rbc-timeslot-group {
   position: relative;
+  min-height: 100px;
+  min-width: 86px;
+}
+
+.rbc-label.rbc-time-header-gutter {
+  max-width: 86px !important;
+  min-width: 86px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-weight: 600;
 }
