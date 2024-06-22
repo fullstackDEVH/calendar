@@ -71,11 +71,13 @@ const MyCalendar = () => {
   const [event, setEvent] = useState<IEvent | null>(null);
   const [chooseEvent, setChooseEvent] = useState<IEvent | null>(null);
 
-  const [resource, setResource] = useState<IResource[]>([]);
+  const [resource] = useState<IResource[]>(resourceMap);
+  const [totalStaff, setTotalStaff] = useState<number>(4);
 
   const [selectectedResource, setSelectedResource] = useState<number | null>(
     null
   );
+  const [index, setIndex] = useState<number>(0);
   const [time, setTime] = useState<string>("");
   const [selectedService, setSelectedServices] = useState<string[]>([]);
   const elementRef = useRef(null);
@@ -92,7 +94,7 @@ const MyCalendar = () => {
     const endDay = dayjs(startDay).add(totalMinutes, "minute").toDate();
 
     setEvent({
-      id: -9999,
+      id: Math.floor(Math.random() * 10001),
       title: "title",
       start: startDay,
       end: endDay,
@@ -151,29 +153,29 @@ const MyCalendar = () => {
       });
     }
   }, [time, calcTop]);
-  console.log(resource);
-  
+
   useEffect(() => {
     const element = elementRef.current;
     if (!element) return;
 
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        if (entry.contentRect.width < 700) {
-          setResource([resourceMap[0]]);
-        } else if (entry.contentRect.width < 1024) {
-          setResource([resourceMap[0], resourceMap[1], resourceMap[2]]);
-        } else setResource(resourceMap);
+        if (entry.contentRect.width < 800) {
+          setTotalStaff(1);
+        } else if (entry.contentRect.width < 1100) {
+          if (index !== 0) setIndex(0);
+          setTotalStaff(3);
+        } else {
+          setTotalStaff(4);
+        }
       }
     });
 
     resizeObserver.observe(element);
-
-    // Cleanup
     return () => {
       resizeObserver.unobserve(element);
     };
-  }, []);
+  }, [index]);
 
   const handleChangeServices = (
     event: React.ChangeEvent<HTMLSelectElement>
@@ -194,7 +196,7 @@ const MyCalendar = () => {
 
   const handleSelectSlot = useCallback(
     (slot: SlotInfo) => {
-      console.log(slot);
+      setChooseEvent(null);
       const title = window.prompt("New Event name");
 
       if (title) {
@@ -258,6 +260,14 @@ const MyCalendar = () => {
     handleCancel();
   };
 
+  const previousStaff = () => {
+    setIndex(index - 1 < 0 ? resource.length - 1 : index - 1);
+  };
+
+  const nextStaff = () => {
+    setIndex(index + 1 >= resource.length ? 0 : index + 1);
+  };
+
   return (
     <div
       style={{
@@ -268,7 +278,14 @@ const MyCalendar = () => {
         overflow: "hidden",
       }}
     >
-      <div style={{ display: "flex", flexWrap:"wrap", gap: "20px", marginBottom: 30 }}>
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: "20px",
+          marginBottom: 30,
+        }}
+      >
         <input
           type="date"
           name=""
@@ -282,7 +299,7 @@ const MyCalendar = () => {
           value={`${selectectedResource}`}
           onChange={(e) => setSelectedResource(+e.target.value)}
         >
-          {resourceMap.map((resource) => (
+          {resource.map((resource) => (
             <option value={resource.resourceId}>
               {resource.resourceTitle}
             </option>
@@ -298,6 +315,13 @@ const MyCalendar = () => {
             <option value={service.time}>{service.name}</option>
           ))}
         </select>
+
+        {totalStaff === 1 ? (
+          <>
+            <button onClick={previousStaff}>Previous Staff</button>
+            <button onClick={nextStaff}>Next Staff</button>
+          </>
+        ) : null}
         <button onClick={handleCancel}>Cancel</button>
         <button onClick={handleClick}>Confirm</button>
       </div>
@@ -364,28 +388,36 @@ const MyCalendar = () => {
             },
             event: (p) => {
               const services: IService[] = p.event.data;
-
               return (
                 <div style={{ position: "relative" }}>
                   {services.map((service, index) => (
                     <div key={index}>{service.name}</div>
                   ))}
                   {chooseEvent?.id === p.event.id &&
-                  myEvents.find((event) => event.id === p.event.id) ? (
-                    <div style={{ position: "absolute", top: 0, right: 0 }}>
+                  myEvents.find((event) => event.id === chooseEvent?.id) ? (
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        right: 0,
+                        background: "white",
+                      }}
+                    >
                       <div
                         className=""
                         onClick={(e) => {
                           e.stopPropagation();
                           setEvents((pre) => {
                             const newEvents = pre.filter(
-                              (event) => event.id !== p.event.id
+                              (event) => event.id !== chooseEvent?.id
                             );
                             return newEvents;
                           });
                         }}
                       >
-                        Delete
+                        <p style={{ color: "black", fontSize: "16" }}>
+                          Delete Event
+                        </p>
                       </div>
                     </div>
                   ) : null}
@@ -480,7 +512,7 @@ const MyCalendar = () => {
            */
           defaultDate={defaultDate}
           resourceIdAccessor="resourceId"
-          resources={resource}
+          resources={resource.slice(index, index + totalStaff)}
           resourceTitleAccessor="resourceTitle"
           events={event ? myEvents.concat([event]) : myEvents}
           // startAccessor="start"
