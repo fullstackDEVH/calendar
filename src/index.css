@@ -1,6 +1,6 @@
 /* @import 'react-big-calendar/lib/sass/styles';
 @import 'react-big-calendar/lib/addons/dragAndDrop/styles'; */
-body{
+body {
   width: 100vw;
   height: 100vh;
   margin: 0;
@@ -45,4 +45,14 @@ body{
   justify-content: center;
   text-align: center;
   font-weight: 600;
+}
+
+.item_options {
+  font-weight: 500;
+  font-size: 15;
+  transition: all ease 0.3s;
+}
+
+.item_options:hover {
+  background: grey;
 }

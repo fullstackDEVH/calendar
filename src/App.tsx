@@ -1,18 +1,11 @@
-import {
-  Calendar,
-  DayPropGetter,
-  SlotInfo,
-  View,
-  dayjsLocalizer,
-} from "react-big-calendar";
+import { Calendar, SlotInfo, View, dayjsLocalizer } from "react-big-calendar";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import dayjs from "dayjs";
 import React, {
-  FunctionComponent,
-  MouseEvent,
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -21,6 +14,12 @@ const localizer = dayjsLocalizer(dayjs);
 interface IService {
   name: string;
   time: string;
+}
+
+interface IResource {
+  resourceId: number;
+  resourceTitle: string;
+  data: { name: string; avatar: string };
 }
 
 const servicesData: IService[] = [
@@ -32,7 +31,7 @@ const servicesData: IService[] = [
   { name: "service 6", time: "90 min" },
 ];
 
-const resourceMap = [
+const resourceMap: IResource[] = [
   {
     resourceId: 1,
     resourceTitle: "Board room",
@@ -55,8 +54,6 @@ const resourceMap = [
   },
 ];
 
-const now = dayjs();
-
 interface IEvent {
   id: number;
   title: string;
@@ -72,12 +69,16 @@ const MyCalendar = () => {
   const [myEvents, setEvents] = useState<IEvent[]>([]);
 
   const [event, setEvent] = useState<IEvent | null>(null);
+  const [chooseEvent, setChooseEvent] = useState<IEvent | null>(null);
+
+  const [resource, setResource] = useState<IResource[]>([]);
 
   const [selectectedResource, setSelectedResource] = useState<number | null>(
     null
   );
   const [time, setTime] = useState<string>("");
   const [selectedService, setSelectedServices] = useState<string[]>([]);
+  const elementRef = useRef(null);
 
   useEffect(() => {
     if (!date || !time || !selectectedResource || selectedService.length < 1)
@@ -103,6 +104,77 @@ const MyCalendar = () => {
     });
   }, [date, time, selectectedResource, selectedService]);
 
+  const calcTop = useCallback(() => {
+    const startOfDay = dayjs().startOf("day");
+    const selectedDayjs = dayjs(`${dayjs().format("YYYY-MM-DD")}T${time}`);
+    const diffMinutes = selectedDayjs.diff(startOfDay, "minute");
+
+    let newTotal;
+    if (diffMinutes >= 60) {
+      const hours = Math.floor(diffMinutes / 60);
+      const remainingMinutes = diffMinutes % 60;
+      newTotal = hours * 100 + (remainingMinutes / 60) * 100;
+    } else {
+      newTotal = (diffMinutes / 60) * 100;
+    }
+    return { persontage: (newTotal / 2400) * 100, distance: newTotal };
+  }, [time]);
+
+  useEffect(() => {
+    const columns = document.querySelectorAll(".rbc-day-slot.rbc-time-column");
+    const container = document.querySelector(".rbc-time-content");
+    if (columns.length < 1 || !container) return;
+
+    columns.forEach((column) => {
+      const existingDiv = column.querySelector("#rbc-current-time-from");
+      if (existingDiv) {
+        column.removeChild(existingDiv);
+      }
+    });
+
+    if (time) {
+      const possitionTop = calcTop();
+
+      container?.scrollTo({ top: possitionTop.distance, behavior: "smooth" });
+      const newDiv = document.createElement("div");
+      newDiv.id = "rbc-current-time-from";
+      newDiv.style.position = "absolute";
+      newDiv.style.zIndex = "4";
+      newDiv.style.left = "0";
+      newDiv.style.right = "0";
+      newDiv.style.height = "1px";
+      newDiv.style.background = "red";
+      newDiv.style.top = `${possitionTop.persontage}%`;
+
+      columns.forEach((column) => {
+        column.appendChild(newDiv.cloneNode(true));
+      });
+    }
+  }, [time, calcTop]);
+  console.log(resource);
+  
+  useEffect(() => {
+    const element = elementRef.current;
+    if (!element) return;
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.contentRect.width < 700) {
+          setResource([resourceMap[0]]);
+        } else if (entry.contentRect.width < 1024) {
+          setResource([resourceMap[0], resourceMap[1], resourceMap[2]]);
+        } else setResource(resourceMap);
+      }
+    });
+
+    resizeObserver.observe(element);
+
+    // Cleanup
+    return () => {
+      resizeObserver.unobserve(element);
+    };
+  }, []);
+
   const handleChangeServices = (
     event: React.ChangeEvent<HTMLSelectElement>
   ) => {
@@ -120,33 +192,34 @@ const MyCalendar = () => {
     });
   };
 
-  // const handleSelectSlot = useCallback(
-  //   (slot: SlotInfo) => {
-  //     console.log(slot);
-  //     const title = window.prompt("New Event name");
+  const handleSelectSlot = useCallback(
+    (slot: SlotInfo) => {
+      console.log(slot);
+      const title = window.prompt("New Event name");
 
-  //     if (title) {
-  //       const event: IEvent = {
-  //         start: slot.start,
-  //         end: slot.end,
-  //         title: title,
-  //         resourceId: slot.resourceId as number,
-  //         id: 10,
-  //       };
-  //       setEvents((prev) => [...prev, event]);
-  //     }
-  //   },
-  //   [setEvents]
-  // );
-  const handleSelectEvent = useCallback(
-    (event: IEvent) => window.alert(event.title),
-    []
+      if (title) {
+        const event: IEvent = {
+          start: slot.start,
+          end: slot.end,
+          title: title,
+          resourceId: slot.resourceId as number,
+          id: 10,
+          data: [{ name: "services 1", time: "services 1" }],
+        };
+        setEvents((prev) => [...prev, event]);
+      }
+    },
+    [setEvents]
   );
+
+  const handleSelectEvent = useCallback((event: IEvent) => {
+    setChooseEvent(event);
+  }, []);
 
   const { defaultDate, scrollToTime, formats } = useMemo(
     () => ({
       defaultDate: dayjs().toDate(),
-      scrollToTime: dayjs().startOf("day").toDate(),
+      scrollToTime: dayjs().toDate(),
       formats: {
         timeGutterFormat: (date: any, culture: any, localizer: any) =>
           localizer.format(date, "HH:mm", culture),
@@ -158,43 +231,31 @@ const MyCalendar = () => {
   const [view, setView] = useState<View>("day");
   const onView = useCallback((newView: View) => setView(newView), [setView]);
 
-  const dayPropGetter = useCallback((date, resourceId) => {
-    // console.log(resourceId);
-    // ({
-    //   ...(moment(date).day() === 2 && {
-    //     className: 'tuesday',
-    //   }),
-    // })
-    return {};
-  }, []);
+  // const dayPropGetter = useCallback((date, resourceId) => {
+  //   // console.log(resourceId);
+  //   // ({
+  //   //   ...(moment(date).day() === 2 && {
+  //   //     className: 'tuesday',
+  //   //   }),
+  //   // })
+  //   return {};
+  // }, []);
 
   const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTime(e.target.value);
   };
 
-  const calcTop = () => {
-    const startOfDay = dayjs().startOf("day");
-    const selectedDayjs = dayjs(`${dayjs().format("YYYY-MM-DD")}T${time}`);
-    const diffMinutes = selectedDayjs.diff(startOfDay, "minute");
-
-    let newTotal;
-    if (diffMinutes >= 60) {
-      const hours = Math.floor(diffMinutes / 60);
-      const remainingMinutes = diffMinutes % 60;
-      newTotal = hours * 40 + (remainingMinutes / 60) * 40;
-    } else {
-      newTotal = (diffMinutes / 60) * 40;
-    }
-    return (newTotal / 960) * 100;
+  const handleCancel = () => {
+    setEvent(null);
+    setTime("");
+    setSelectedServices([]);
+    setSelectedResource(null);
   };
 
   const handleClick = () => {
     if (!event) return;
     setEvents((pre) => [...pre, event]);
-    setEvent(null);
-    setTime("");
-    setSelectedServices([]);
-    setSelectedResource(null);
+    handleCancel();
   };
 
   return (
@@ -207,7 +268,7 @@ const MyCalendar = () => {
         overflow: "hidden",
       }}
     >
-      <div style={{ display: "flex", gap: "20px", marginBottom: 30 }}>
+      <div style={{ display: "flex", flexWrap:"wrap", gap: "20px", marginBottom: 30 }}>
         <input
           type="date"
           name=""
@@ -217,7 +278,10 @@ const MyCalendar = () => {
         />
         <input type="time" value={time} onChange={handleTimeChange} />
 
-        <select onChange={(e) => setSelectedResource(+e.target.value)}>
+        <select
+          value={`${selectectedResource}`}
+          onChange={(e) => setSelectedResource(+e.target.value)}
+        >
           {resourceMap.map((resource) => (
             <option value={resource.resourceId}>
               {resource.resourceTitle}
@@ -234,10 +298,11 @@ const MyCalendar = () => {
             <option value={service.time}>{service.name}</option>
           ))}
         </select>
-
+        <button onClick={handleCancel}>Cancel</button>
         <button onClick={handleClick}>Confirm</button>
       </div>
       <div
+        ref={elementRef}
         style={{ width: "100%", height: "100%", flex: 1, overflow: "hidden" }}
       >
         <Calendar
@@ -247,6 +312,7 @@ const MyCalendar = () => {
           date={date ? dayjs(date).toDate() : dayjs().toDate()}
           allDayMaxRows={4}
           // dayPropGetter={dayPropGetter}
+          scrollToTime={scrollToTime}
           toolbar={false}
           formats={formats}
           slotPropGetter={(_, resourceId) => {
@@ -283,7 +349,7 @@ const MyCalendar = () => {
                         borderRadius: 8,
                         transform: "translateY(-50%)",
                         border: "1px solid red",
-                        top: `${calcTop()}%`,
+                        top: `${calcTop().persontage}%`,
                         background: "rgba(255,255,255,0.1)",
                         backdropFilter: "blur(10px)",
                       }}
@@ -300,10 +366,29 @@ const MyCalendar = () => {
               const services: IService[] = p.event.data;
 
               return (
-                <div>
+                <div style={{ position: "relative" }}>
                   {services.map((service, index) => (
                     <div key={index}>{service.name}</div>
                   ))}
+                  {chooseEvent?.id === p.event.id &&
+                  myEvents.find((event) => event.id === p.event.id) ? (
+                    <div style={{ position: "absolute", top: 0, right: 0 }}>
+                      <div
+                        className=""
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEvents((pre) => {
+                            const newEvents = pre.filter(
+                              (event) => event.id !== p.event.id
+                            );
+                            return newEvents;
+                          });
+                        }}
+                      >
+                        Delete
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               );
             },
@@ -332,59 +417,61 @@ const MyCalendar = () => {
                 </div>
               );
             },
-            dayColumnWrapper: (re: any) => {
-              const data: (boolean | object | [])[] = re.children;
-              const currentResource = re.resource;
+            // dayColumnWrapper: (re: any) => {
+            //   const data: (boolean | object | [])[] = re.children;
+            //   const currentResource = re.resource;
+            //   console.log(re);
 
-              return (
-                <div
-                  key={currentResource}
-                  className={re.className}
-                  style={{
-                    background:
-                      currentResource === selectectedResource ? "pink" : "",
-                  }}
-                >
-                  {time ? (
-                    <div
-                      id="rbc-current-time-from"
-                      style={{
-                        position: "absolute",
-                        zIndex: 4,
-                        left: 0,
-                        right: 0,
-                        height: 1,
-                        background: "red",
-                        top: `${calcTop()}%`,
-                      }}
-                    ></div>
-                  ) : null}
-                  {data.map((item, index) => {
-                    if (Array.isArray(item)) {
-                      return (
-                        <>
-                          {item.map((subItem, ind) => {
-                            if (
-                              typeof item === "object" &&
-                              React.isValidElement(subItem)
-                            ) {
-                              return React.cloneElement(subItem, { key: ind });
-                            }
-                            return null;
-                          })}
-                        </>
-                      );
-                    } else if (
-                      typeof item === "object" &&
-                      React.isValidElement(item)
-                    ) {
-                      return React.cloneElement(item, { key: index });
-                    }
-                    return null;
-                  })}
-                </div>
-              );
-            },
+            //   return (
+            //     <DayColumn
+            //       ref={containerRef}
+            //       key={currentResource}
+            //       className={re.className}
+            //       style={{
+            //         background:
+            //           currentResource === selectectedResource ? "pink" : "",
+            //       }}
+            //     >
+            //       {time ? (
+            // <div
+            //   id="rbc-current-time-from"
+            //   style={{
+            //     position: "absolute",
+            //     zIndex: 4,
+            //     left: 0,
+            //     right: 0,
+            //     height: 1,
+            //     background: "red",
+            //     top: `${calcTop()}%`,
+            //   }}
+            // ></div>
+            //       ) : null}
+            //       {data.map((item, index) => {
+            //         if (Array.isArray(item)) {
+            //           return (
+            //             <>
+            //               {item.map((subItem, ind) => {
+            //                 if (
+            //                   typeof item === "object" &&
+            //                   React.isValidElement(subItem)
+            //                 ) {
+            //                   return React.cloneElement(subItem, { key: ind });
+            //                 }
+            //                 return null;
+            //               })}
+            //             </>
+            //           );
+            //         } else if (
+            //           typeof item === "object" &&
+            //           React.isValidElement(item)
+            //         ) {
+            //           return React.cloneElement(item, { key: index });
+            //         }
+            //         return null;
+            //       })}
+            //     </DayColumn>
+            //   );
+            // },
           }}
           /**
            * rbc-day-slot rbc-time-column rbc-now rbc-today
@@ -393,7 +480,7 @@ const MyCalendar = () => {
            */
           defaultDate={defaultDate}
           resourceIdAccessor="resourceId"
-          resources={resourceMap}
+          resources={resource}
           resourceTitleAccessor="resourceTitle"
           events={event ? myEvents.concat([event]) : myEvents}
           // startAccessor="start"
@@ -403,8 +490,9 @@ const MyCalendar = () => {
           // timeslots={2}
           // scrollToTime={scrollToTime}
           selected={true}
+          selectable={true}
           onSelectEvent={handleSelectEvent}
-          // onSelectSlot={handleSelectSlot}
+          onSelectSlot={handleSelectSlot}
         />
       </div>
     </div>
