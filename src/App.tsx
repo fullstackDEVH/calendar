@@ -8,6 +8,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { Select } from "antd";
 
 const localizer = dayjsLocalizer(dayjs);
 
@@ -27,7 +28,7 @@ const servicesData: IService[] = [
   { name: "service 2", time: "15 min" },
   { name: "service 3", time: "20 min" },
   { name: "service 4", time: "60 min" },
-  { name: "service 5", time: "30 min" },
+  { name: "service 5", time: "45 min" },
   { name: "service 6", time: "90 min" },
 ];
 
@@ -177,21 +178,12 @@ const MyCalendar = () => {
     };
   }, [index]);
 
-  const handleChangeServices = (
-    event: React.ChangeEvent<HTMLSelectElement>
-  ) => {
-    setSelectedServices((pre) => {
-      let newData = [...pre];
-      const find = pre.find((pre) => pre === event.target.value);
+  const handleChangeServices = (value: string[]) => {
+    setSelectedServices(value);
+  };
 
-      if (find) {
-        newData = newData.filter((data) => data !== find);
-      } else {
-        newData.push(event.target.value);
-      }
-
-      return newData;
-    });
+  const handleChangeResource = (value: string) => {
+    setSelectedResource(+value);
   };
 
   const handleSelectSlot = useCallback(
@@ -284,6 +276,7 @@ const MyCalendar = () => {
           flexWrap: "wrap",
           gap: "20px",
           marginBottom: 30,
+          padding : 20
         }}
       >
         <input
@@ -295,26 +288,31 @@ const MyCalendar = () => {
         />
         <input type="time" value={time} onChange={handleTimeChange} />
 
-        <select
-          value={`${selectectedResource}`}
-          onChange={(e) => setSelectedResource(+e.target.value)}
-        >
-          {resource.map((resource) => (
-            <option value={resource.resourceId}>
-              {resource.resourceTitle}
-            </option>
-          ))}
-        </select>
+        <Select
+          allowClear
+          style={{ width: "140px" }}
+          placeholder="select resource"
+          value={selectectedResource ? `${selectectedResource}` : undefined}
+          onChange={handleChangeResource}
+          options={resource.slice(index, index + totalStaff).map((service) => ({
+            label: service.resourceTitle,
+            value: service.resourceId,
+          }))}
+        />
 
-        <select
-          multiple={true}
-          value={selectedService}
+        <Select
+          mode="multiple"
+          allowClear
+          style={{ width: "210px" }}
+          placeholder="select services"
+          maxTagCount={2}
+          value={selectedService ? selectedService : null}
           onChange={handleChangeServices}
-        >
-          {servicesData.map((service) => (
-            <option value={service.time}>{service.name}</option>
-          ))}
-        </select>
+          options={servicesData.map((service) => ({
+            label: service.name,
+            value: service.time,
+          }))}
+        />
 
         {totalStaff === 1 ? (
           <>
