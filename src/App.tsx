@@ -67,7 +67,16 @@ interface IEvent {
 const MyCalendar = () => {
   const [date, onChange] = useState<string>("");
 
-  const [myEvents, setEvents] = useState<IEvent[]>([]);
+  const [myEvents, setEvents] = useState<IEvent[]>(() => {
+    const savedEvents = localStorage.getItem("myEvents");
+    const eventParse: IEvent[] = savedEvents ? JSON.parse(savedEvents) : [];
+    const convertDate = eventParse.map((event) => ({
+      ...event,
+      start: dayjs(event.start).toDate(),
+      end: dayjs(event.end).toDate(),
+    }));
+    return convertDate;
+  });
 
   const [event, setEvent] = useState<IEvent | null>(null);
   const [chooseEvent, setChooseEvent] = useState<IEvent | null>(null);
@@ -82,6 +91,10 @@ const MyCalendar = () => {
   const [time, setTime] = useState<string>("");
   const [selectedService, setSelectedServices] = useState<string[]>([]);
   const elementRef = useRef(null);
+
+  useEffect(() => {
+    localStorage.setItem("myEvents", JSON.stringify(myEvents));
+  }, [myEvents]);
 
   useEffect(() => {
     if (!date || !time || !selectectedResource || selectedService.length < 1)
@@ -107,9 +120,11 @@ const MyCalendar = () => {
     });
   }, [date, time, selectectedResource, selectedService]);
 
-  const calcTop = useCallback(() => {
+  const calcTop = useCallback((dateString: string) => {
     const startOfDay = dayjs().startOf("day");
-    const selectedDayjs = dayjs(`${dayjs().format("YYYY-MM-DD")}T${time}`);
+    const selectedDayjs = dayjs(
+      `${dayjs().format("YYYY-MM-DD")}T${dateString}`
+    );
     const diffMinutes = selectedDayjs.diff(startOfDay, "minute");
 
     let newTotal;
@@ -121,7 +136,7 @@ const MyCalendar = () => {
       newTotal = (diffMinutes / 60) * 100;
     }
     return { persontage: (newTotal / 2400) * 100, distance: newTotal };
-  }, [time]);
+  }, []);
 
   useEffect(() => {
     const columns = document.querySelectorAll(".rbc-day-slot.rbc-time-column");
@@ -136,7 +151,7 @@ const MyCalendar = () => {
     });
 
     if (time) {
-      const possitionTop = calcTop();
+      const possitionTop = calcTop(time);
 
       container?.scrollTo({ top: possitionTop.distance, behavior: "smooth" });
       const newDiv = document.createElement("div");
@@ -146,7 +161,7 @@ const MyCalendar = () => {
       newDiv.style.left = "0";
       newDiv.style.right = "0";
       newDiv.style.height = "1px";
-      newDiv.style.background = "red";
+      newDiv.style.background = "green";
       newDiv.style.top = `${possitionTop.persontage}%`;
 
       columns.forEach((column) => {
@@ -154,6 +169,20 @@ const MyCalendar = () => {
       });
     }
   }, [time, calcTop]);
+
+  const formatTime = (date: Date) => {
+    const hours = date.getHours().toString().padStart(2, "0");
+    const minutes = date.getMinutes().toString().padStart(2, "0");
+    return `${hours}:${minutes}`;
+  };
+
+  const isSameDay = (date1: Date, date2: Date) => {
+    return (
+      date1.getFullYear() === date2.getFullYear() &&
+      date1.getMonth() === date2.getMonth() &&
+      date1.getDate() === date2.getDate()
+    );
+  };
 
   useEffect(() => {
     const element = elementRef.current;
@@ -177,6 +206,63 @@ const MyCalendar = () => {
       resizeObserver.unobserve(element);
     };
   }, [index]);
+
+  useEffect(() => {
+    const updateIndicator = () => {
+      const content = formatTime(new Date());
+      const wrapper = document.querySelector(
+        ".rbc-time-gutter.rbc-time-column + .rbc-day-slot.rbc-time-column"
+      );
+
+      const isSameDate = isSameDay(
+        new Date(),
+        date ? dayjs(date).toDate() : dayjs().toDate()
+      );
+
+      let indicator = document.querySelector(
+        ".rbc-current-time"
+      ) as HTMLElement;
+
+      if (!isSameDate && indicator) {
+        wrapper?.removeChild(indicator);
+        return;
+      }
+
+      if (!indicator) {
+        indicator = document.createElement("div");
+        indicator.className = "rbc-current-time";
+        indicator.style.position = "absolute";
+        indicator.style.left = "-38px";
+        indicator.style.width = "38px";
+        indicator.style.height = "20px";
+        indicator.style.color = "red";
+        indicator.style.border = "1px solid red";
+        indicator.style.fontSize = "14px";
+        indicator.style.textAlign = "center";
+        indicator.style.fontWeight = "600";
+        indicator.style.background = "white";
+        indicator.style.borderRadius = "12px";
+        indicator.style.transform = "translateY(-50%)";
+        indicator.style.top = `${calcTop(content).persontage}%`;
+        indicator.innerText = content;
+
+        if (wrapper) {
+          wrapper.appendChild(indicator.cloneNode(true));
+        }
+      } else {
+        indicator.style.top = `${calcTop(content).persontage}%`;
+        indicator.innerText = content;
+      }
+    };
+
+    updateIndicator();
+
+    const interval = setInterval(updateIndicator, 30000);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [date, calcTop]);
 
   const handleChangeServices = (value: string[]) => {
     setSelectedServices(value);
@@ -260,6 +346,10 @@ const MyCalendar = () => {
     setIndex(index + 1 >= resource.length ? 0 : index + 1);
   };
 
+  console.log(
+    formatTime(dayjs(`${dayjs().format("YYYY-MM-DD")}T${time}`).toDate())
+  );
+
   return (
     <div
       style={{
@@ -276,7 +366,7 @@ const MyCalendar = () => {
           flexWrap: "wrap",
           gap: "20px",
           marginBottom: 30,
-          padding : 20
+          padding: 20,
         }}
       >
         <input
@@ -304,9 +394,12 @@ const MyCalendar = () => {
           mode="multiple"
           allowClear
           style={{ width: "210px" }}
+          onClear={() => {
+            setSelectedServices([]);
+          }}
           placeholder="select services"
           maxTagCount={2}
-          value={selectedService ? selectedService : null}
+          value={selectedService}
           onChange={handleChangeServices}
           options={servicesData.map((service) => ({
             label: service.name,
@@ -370,13 +463,13 @@ const MyCalendar = () => {
                         width: 40,
                         borderRadius: 8,
                         transform: "translateY(-50%)",
-                        border: "1px solid red",
-                        top: `${calcTop().persontage}%`,
+                        border: "1px solid green",
+                        top: `${calcTop(time).persontage}%`,
                         background: "rgba(255,255,255,0.1)",
                         backdropFilter: "blur(10px)",
                       }}
                     >
-                      <div style={{ color: "red", fontWeight: 600 }}>
+                      <div style={{ color: "green", fontWeight: 600 }}>
                         {time}
                       </div>
                     </div>
@@ -503,11 +596,6 @@ const MyCalendar = () => {
             //   );
             // },
           }}
-          /**
-           * rbc-day-slot rbc-time-column rbc-now rbc-today
-           *        - rbc-timeslot-group
-           *               - rbc-time-slot
-           */
           defaultDate={defaultDate}
           resourceIdAccessor="resourceId"
           resources={resource.slice(index, index + totalStaff)}

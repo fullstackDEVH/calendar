@@ -62,3 +62,11 @@ body {
 .item_options:hover {
   background: grey;
 }
+
+.rbc-current-time-indicator {
+  background: red;
+}
+
+.rbc-day-slot.rbc-time-column {
+  z-index: 11;
+}
