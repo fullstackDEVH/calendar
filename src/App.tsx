@@ -82,12 +82,11 @@ const MyCalendar = () => {
   const [chooseEvent, setChooseEvent] = useState<IEvent | null>(null);
 
   const [resource] = useState<IResource[]>(resourceMap);
-  const [totalStaff, setTotalStaff] = useState<number>(4);
+  const [isMobile, setIsMobile] = useState<boolean>(false);
 
   const [selectectedResource, setSelectedResource] = useState<number | null>(
     null
   );
-  const [index, setIndex] = useState<number>(0);
   const [time, setTime] = useState<string>("");
   const [selectedService, setSelectedServices] = useState<string[]>([]);
   const elementRef = useRef(null);
@@ -120,11 +119,18 @@ const MyCalendar = () => {
     });
   }, [date, time, selectectedResource, selectedService]);
 
+  const handleCancel = useCallback(() => {
+    setEvent(null);
+    setTime("");
+    setSelectedServices([]);
+    if (!isMobile) setSelectedResource(null);
+  }, [isMobile]);
+
   useEffect(() => {
     if (date) {
       handleCancel();
     }
-  }, [date]);
+  }, [date, handleCancel]);
 
   const calcTop = useCallback((dateString: string) => {
     const startOfDay = dayjs().startOf("day");
@@ -199,13 +205,10 @@ const MyCalendar = () => {
 
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        if (entry.contentRect.width < 800) {
-          setTotalStaff(1);
-        } else if (entry.contentRect.width < 1100) {
-          if (index !== 0) setIndex(0);
-          setTotalStaff(3);
+        if (entry.contentRect.width < 888) {
+          setIsMobile(true);
         } else {
-          setTotalStaff(4);
+          setIsMobile(false);
         }
       }
     });
@@ -214,17 +217,19 @@ const MyCalendar = () => {
     return () => {
       resizeObserver.unobserve(element);
     };
-  }, [index]);
+  }, []);
 
   useEffect(() => {
     const updateIndicator = () => {
       const content = formatTime(new Date());
-      const wrapper = document.querySelector(
+
+      const wrapper: HTMLElement | null = document.querySelector(
         ".rbc-time-gutter.rbc-time-column + .rbc-day-slot.rbc-time-column"
       );
+      if (isMobile && !selectectedResource) return;
 
       const isSameDate = isSameDay(
-        new Date(),
+        dayjs().toDate(),
         date ? dayjs(date).toDate() : dayjs().toDate()
       );
 
@@ -271,7 +276,7 @@ const MyCalendar = () => {
     return () => {
       clearInterval(interval);
     };
-  }, [date, calcTop]);
+  }, [date, isMobile, selectectedResource, calcTop]);
 
   const handleChangeServices = (value: string[]) => {
     setSelectedServices(value);
@@ -297,6 +302,25 @@ const MyCalendar = () => {
     []
   );
 
+  useEffect(() => {
+    if (isMobile) {
+      setSelectedResource(resourceMap[0].resourceId);
+    }
+  }, [isMobile]);
+
+  const calcResource = useMemo(() => {
+    if (isMobile) {
+      const findResource = resource.find(
+        (res) => res.resourceId === selectectedResource
+      );
+
+      if (!findResource) return [];
+
+      return [findResource];
+    }
+    return resource;
+  }, [isMobile, selectectedResource, resource]);
+
   const [view, setView] = useState<View>("day");
   const onView = useCallback((newView: View) => setView(newView), [setView]);
 
@@ -314,25 +338,10 @@ const MyCalendar = () => {
     setTime(e.target.value);
   };
 
-  const handleCancel = () => {
-    setEvent(null);
-    setTime("");
-    setSelectedServices([]);
-    setSelectedResource(null);
-  };
-
   const handleClick = () => {
     if (!event) return;
     setEvents((pre) => [...pre, event]);
     handleCancel();
-  };
-
-  const previousStaff = () => {
-    setIndex(index - 1 < 0 ? resource.length - 1 : index - 1);
-  };
-
-  const nextStaff = () => {
-    setIndex(index + 1 >= resource.length ? 0 : index + 1);
   };
 
   return (
@@ -368,7 +377,7 @@ const MyCalendar = () => {
           placeholder="select resource"
           value={selectectedResource ? `${selectectedResource}` : undefined}
           onChange={handleChangeResource}
-          options={resource.slice(index, index + totalStaff).map((service) => ({
+          options={resourceMap.map((service) => ({
             label: service.resourceTitle,
             value: service.resourceId,
           }))}
@@ -390,13 +399,6 @@ const MyCalendar = () => {
             value: service.time,
           }))}
         />
-
-        {totalStaff === 1 ? (
-          <>
-            <button onClick={previousStaff}>Previous Staff</button>
-            <button onClick={nextStaff}>Next Staff</button>
-          </>
-        ) : null}
         <button onClick={handleCancel}>Cancel</button>
         <button onClick={handleClick}>Confirm</button>
       </div>
@@ -419,7 +421,7 @@ const MyCalendar = () => {
               style: {
                 height: 80,
                 backgroundColor:
-                  resourceId === selectectedResource ? "pink" : "unset",
+                  resourceId === selectectedResource ? "seashell" : "unset",
               },
             };
           }}
@@ -582,7 +584,7 @@ const MyCalendar = () => {
           }}
           defaultDate={defaultDate}
           resourceIdAccessor="resourceId"
-          resources={resource.slice(index, index + totalStaff)}
+          resources={calcResource}
           resourceTitleAccessor="resourceTitle"
           events={event ? myEvents.concat([event]) : myEvents}
           // startAccessor="start"
