@@ -14,7 +14,7 @@ body {
 
 #root {
   flex: 1;
-  overflow: scroll;
+  overflow: auto;
 }
 
 .schedule-control-section {

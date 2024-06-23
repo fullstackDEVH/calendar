@@ -1,4 +1,4 @@
-import { Calendar, SlotInfo, View, dayjsLocalizer } from "react-big-calendar";
+import { Calendar, View, dayjsLocalizer } from "react-big-calendar";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import dayjs from "dayjs";
 import React, {
@@ -100,7 +100,7 @@ const MyCalendar = () => {
     if (!date || !time || !selectectedResource || selectedService.length < 1)
       return;
 
-    const startDay = dayjs(`${dayjs().format("YYYY-MM-DD")}T${time}`).toDate();
+    const startDay = dayjs(`${date}T${time}`).toDate();
     const totalMinutes = selectedService.reduce((acc, time) => {
       const minutes = parseInt(time.split(" ")[0], 10);
       return acc + minutes;
@@ -119,6 +119,12 @@ const MyCalendar = () => {
       })),
     });
   }, [date, time, selectectedResource, selectedService]);
+
+  useEffect(() => {
+    if (date) {
+      handleCancel();
+    }
+  }, [date]);
 
   const calcTop = useCallback((dateString: string) => {
     const startOfDay = dayjs().startOf("day");
@@ -153,7 +159,10 @@ const MyCalendar = () => {
     if (time) {
       const possitionTop = calcTop(time);
 
-      container?.scrollTo({ top: possitionTop.distance, behavior: "smooth" });
+      container?.scrollTo({
+        top: possitionTop.distance - 50,
+        behavior: "smooth",
+      });
       const newDiv = document.createElement("div");
       newDiv.id = "rbc-current-time-from";
       newDiv.style.position = "absolute";
@@ -223,8 +232,8 @@ const MyCalendar = () => {
         ".rbc-current-time"
       ) as HTMLElement;
 
-      if (!isSameDate && indicator) {
-        wrapper?.removeChild(indicator);
+      if (!isSameDate) {
+        if (indicator) wrapper?.removeChild(indicator);
         return;
       }
 
@@ -271,26 +280,6 @@ const MyCalendar = () => {
   const handleChangeResource = (value: string) => {
     setSelectedResource(+value);
   };
-
-  const handleSelectSlot = useCallback(
-    (slot: SlotInfo) => {
-      setChooseEvent(null);
-      const title = window.prompt("New Event name");
-
-      if (title) {
-        const event: IEvent = {
-          start: slot.start,
-          end: slot.end,
-          title: title,
-          resourceId: slot.resourceId as number,
-          id: 10,
-          data: [{ name: "services 1", time: "services 1" }],
-        };
-        setEvents((prev) => [...prev, event]);
-      }
-    },
-    [setEvents]
-  );
 
   const handleSelectEvent = useCallback((event: IEvent) => {
     setChooseEvent(event);
@@ -346,17 +335,13 @@ const MyCalendar = () => {
     setIndex(index + 1 >= resource.length ? 0 : index + 1);
   };
 
-  console.log(
-    formatTime(dayjs(`${dayjs().format("YYYY-MM-DD")}T${time}`).toDate())
-  );
-
   return (
     <div
       style={{
         display: "flex",
         flexDirection: "column",
-        width: "100vw",
-        height: "100vh",
+        width: "100%",
+        height: "100%",
         overflow: "hidden",
       }}
     >
@@ -371,8 +356,7 @@ const MyCalendar = () => {
       >
         <input
           type="date"
-          name=""
-          id=""
+          min={new Date().toISOString().split("T")[0]}
           value={date}
           onChange={(e) => onChange(e.target.value)}
         />
@@ -441,9 +425,9 @@ const MyCalendar = () => {
           }}
           components={{
             timeGutterHeader: () => {
-              return dayjs(`${dayjs().format("YYYY-MM-DD")}T${time}`).format(
-                "dddd MMM DD"
-              );
+              return date
+                ? dayjs(`${date}`).format("dddd MMM DD")
+                : dayjs().format("dddd MMM DD");
             },
             timeGutterWrapper: (pre: any) => {
               const children: JSX.Element = pre.children;
@@ -608,9 +592,7 @@ const MyCalendar = () => {
           // timeslots={2}
           // scrollToTime={scrollToTime}
           selected={true}
-          selectable={true}
           onSelectEvent={handleSelectEvent}
-          onSelectSlot={handleSelectSlot}
         />
       </div>
     </div>
