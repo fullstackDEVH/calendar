@@ -1,0 +1,9 @@
+#installInstructions {
+  display: none;
+}
+
+@media (display-mode: browser) {
+  #installInstructions {
+    display: block;
+  }
+}

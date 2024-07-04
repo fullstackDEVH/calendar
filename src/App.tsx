@@ -321,6 +321,12 @@ const MyCalendar = () => {
     return resource;
   }, [isMobile, selectectedResource, resource]);
 
+  useEffect(()=> {
+    window.addEventListener('appinstalled', () => {
+      console.log('INSTALL: Success');
+    });
+  } , [])
+
   const [view, setView] = useState<View>("day");
   const onView = useCallback((newView: View) => setView(newView), [setView]);
 
