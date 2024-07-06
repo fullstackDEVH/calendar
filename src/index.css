@@ -1,3 +1,14 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-orange: #ef6820;
+  --color-blue: #2e90fa;
+  --text-primary: #6941c6;
+  --bg-summary: #21005d;
+}
+
 html {
   height: -webkit-fill-available;
 }
@@ -10,6 +21,10 @@ body {
   margin: 0;
   padding: 0;
   height: -webkit-fill-available;
+
+  font-family: "Inter", sans-serif;
+  font-optical-sizing: auto;
+  font-variation-settings: "slnt" 0;
 }
 
 #root {
@@ -69,4 +84,15 @@ body {
 
 .rbc-day-slot.rbc-time-column {
   z-index: 11;
+}
+
+
+/* antd */
+.ant-select-selector {
+  border : 1px solid #D0D5DD;
+}
+.ant-select-selection-placeholder {
+  color: #667085 !important;
+  size: 14px;
+  font-weight: 500;
 }

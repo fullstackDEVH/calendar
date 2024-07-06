@@ -8,28 +8,30 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { Select } from "antd";
+import Heading from "./components/Heading";
+import Summary from "./components/Summary";
+import Controller from "./components/Controller";
 
 const localizer = dayjsLocalizer(dayjs);
 
-interface IService {
+export interface IService {
   name: string;
   time: string;
 }
 
-interface IResource {
+export interface IResource {
   resourceId: number;
   resourceTitle: string;
   data: { name: string; avatar: string };
 }
 
 const servicesData: IService[] = [
-  { name: "service 1", time: "30 min" },
-  { name: "service 2", time: "15 min" },
-  { name: "service 3", time: "20 min" },
-  { name: "service 4", time: "60 min" },
-  { name: "service 5", time: "45 min" },
-  { name: "service 6", time: "90 min" },
+  { name: "Service 1", time: "30 min" },
+  { name: "Service 2", time: "15 min" },
+  { name: "Service 3", time: "20 min" },
+  { name: "Service 4", time: "60 min" },
+  { name: "Service 5", time: "45 min" },
+  { name: "Service 6", time: "90 min" },
 ];
 
 const resourceMap: IResource[] = [
@@ -89,6 +91,9 @@ const MyCalendar = () => {
   );
   const [time, setTime] = useState<string>("");
   const [selectedService, setSelectedServices] = useState<string[]>([]);
+  const [selectedDateTime, setSelectedDateTime] = useState<Date | null>(
+    new Date()
+  );
   const elementRef = useRef(null);
 
   useEffect(() => {
@@ -119,7 +124,7 @@ const MyCalendar = () => {
     });
   }, [date, time, selectectedResource, selectedService]);
 
-  const handleCancel = useCallback(() => {
+  const handleClear = useCallback(() => {
     setEvent(null);
     setTime("");
     setSelectedServices([]);
@@ -128,9 +133,9 @@ const MyCalendar = () => {
 
   useEffect(() => {
     if (date) {
-      handleCancel();
+      handleClear();
     }
-  }, [date, handleCancel]);
+  }, [date, handleClear]);
 
   const calcTop = useCallback((dateString: string) => {
     const startOfDay = dayjs().startOf("day");
@@ -321,11 +326,11 @@ const MyCalendar = () => {
     return resource;
   }, [isMobile, selectectedResource, resource]);
 
-  useEffect(()=> {
-    window.addEventListener('appinstalled', () => {
-      console.log('INSTALL: Success');
+  useEffect(() => {
+    window.addEventListener("appinstalled", () => {
+      console.log("INSTALL: Success");
     });
-  } , [])
+  }, []);
 
   const [view, setView] = useState<View>("day");
   const onView = useCallback((newView: View) => setView(newView), [setView]);
@@ -340,77 +345,50 @@ const MyCalendar = () => {
   //   return {};
   // }, []);
 
-  const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setTime(e.target.value);
-  };
-
-  const handleClick = () => {
+  const handleCreateEvent = () => {
     if (!event) return;
     setEvents((pre) => [...pre, event]);
-    handleCancel();
+    handleClear();
   };
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        width: "100%",
-        height: "100%",
-        overflow: "hidden",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          gap: "20px",
-          marginBottom: 30,
-          padding: 20,
-        }}
-      >
-        <input
-          type="date"
-          min={new Date().toISOString().split("T")[0]}
-          value={date}
-          onChange={(e) => onChange(e.target.value)}
-        />
-        <input type="time" value={time} onChange={handleTimeChange} />
-
-        <Select
-          allowClear
-          style={{ width: "140px" }}
-          placeholder="select resource"
-          value={selectectedResource ? `${selectectedResource}` : undefined}
-          onChange={handleChangeResource}
-          options={resourceMap.map((service) => ({
-            label: service.resourceTitle,
-            value: service.resourceId,
-          }))}
-        />
-
-        <Select
-          mode="multiple"
-          allowClear
-          style={{ width: "210px" }}
-          onClear={() => {
-            setSelectedServices([]);
-          }}
-          placeholder="select services"
-          maxTagCount={2}
-          value={selectedService}
-          onChange={handleChangeServices}
-          options={servicesData.map((service) => ({
+    <div className="flex flex-col h-full overflow-hidden">
+      <Heading />
+      <Summary />
+      <Controller
+        service={{
+          value: selectedService,
+          options: servicesData.map((service) => ({
             label: service.name,
             value: service.time,
-          }))}
-        />
-        <button onClick={handleCancel}>Cancel</button>
-        <button onClick={handleClick}>Confirm</button>
-      </div>
+          })),
+          onChange: handleChangeServices,
+        }}
+        resource={{
+          value: selectectedResource,
+          options: resourceMap.map((resource) => ({
+            label: resource.resourceTitle,
+            value: `${resource.resourceId}`,
+          })),
+          onChange: handleChangeResource,
+        }}
+        dateTime={{
+          value: selectedDateTime,
+          onChange: (value) => setSelectedDateTime(value),
+        }}
+        handleCreateEvent={handleCreateEvent}
+        handleClear={handleClear}
+      />
+
       <div
         ref={elementRef}
-        style={{ width: "100%", height: "100%", flex: 1, overflow: "hidden" }}
+        style={{
+          width: "100%",
+          height: "100%",
+          flex: 1,
+          overflow: "hidden",
+          paddingBottom: 10,
+        }}
       >
         <Calendar
           localizer={localizer}
