@@ -4,11 +4,9 @@ import "react-datepicker/dist/react-datepicker.css";
 
 interface DatePickerProps {
   value: Date | null;
-  onChange: (
-    date: Date | null
-    // event: React.SyntheticEvent<any> | undefined
-  ) => void;
+  onChange: (date: string) => void;
 }
+
 const DateTimePicker = ({ value, onChange }: DatePickerProps) => {
   const datepickerRef = useRef<any>(null);
 
@@ -18,15 +16,19 @@ const DateTimePicker = ({ value, onChange }: DatePickerProps) => {
     }
   }, []);
 
+  const handleChange = (date: Date | null) => {
+    if (date) {
+      const formattedDate = date.toLocaleDateString();
+      onChange(formattedDate);
+    }
+  };
+
   return (
     <DatePicker
       ref={datepickerRef}
       selected={value}
       minDate={new Date()}
-      minTime={new Date()}
-      maxTime={new Date(new Date().setHours(23, 59, 59, 999))}
-      onChange={onChange}
-      showTimeSelect
+      onChange={handleChange}
       timeIntervals={15}
       dateFormat="Pp"
       inline

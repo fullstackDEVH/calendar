@@ -9,6 +9,7 @@ import DateTimePicker from "../DateTimePicker";
 import dayjs from "dayjs";
 import { useRef, useState } from "react";
 import useElementClickOutSide from "../../hooks/useElementClickOutSide";
+import { DATA_TIME } from "../../constants/data";
 
 interface IOption {
   label: string;
@@ -27,8 +28,10 @@ interface IProps {
     onChange: (items: string) => void;
   };
   dateTime: {
-    value: Date | null;
-    onChange: (value: Date) => void;
+    valueDate: Date | null;
+    onChangeDate: (date: string) => void;
+    valueTime: string | null;
+    onChangeTime: (date: string) => void;
   };
   handleCreateEvent: () => void;
   handleClear: () => void;
@@ -41,17 +44,34 @@ const Controller = ({
   handleCreateEvent,
   handleClear,
 }: IProps) => {
+  const currentDate = dayjs().format("YYYY-MM-DD");
+  const currentTime = dayjs().format("HH:mm");
   const [visibleDateTime, setVisibleDateTime] = useState<boolean>(false);
 
   const dateTimeRef = useRef<HTMLDivElement>(null);
 
   useElementClickOutSide(
     dateTimeRef,
-    () => {
-      if (visibleDateTime) setVisibleDateTime(false);
+    (e) => {
+      const dateContainer = document.querySelector(".react-datepicker");
+      const isContains = dateContainer?.contains(e.target as Node);
+
+      if (visibleDateTime && !isContains) setVisibleDateTime(false);
     },
     [visibleDateTime]
   );
+
+  const handleNextDate = () => {
+    dateTime.onChangeDate(
+      dayjs(dateTime.valueDate).add(1, "day").toDate().toLocaleDateString()
+    );
+  };
+
+  const handlePreviousDate = () => {
+    dateTime.onChangeDate(
+      dayjs(dateTime.valueDate).subtract(1, "day").toDate().toLocaleDateString()
+    );
+  };
 
   return (
     <div className="bg-[#F2F4F7] px-1 py-2">
@@ -102,19 +122,31 @@ const Controller = ({
           <input
             type="text"
             value={"+21 2302 9764"}
+            readOnly
             className="outline-none border border-[#D0D5DD] rounded-lg text-[#101828] h-[40px] px-[14px] w-full max-w-[145px] font-medium"
           />
           <input
             type="text"
             value={"David"}
+            readOnly
             className="outline-none border border-[#D0D5DD] rounded-lg text-[#101828] h-[40px] px-[14px] w-full max-w-[171px] font-medium"
           />
-          <div className="border border-[#D0D5DD] rounded-lg text-[#344054] h-[40px] px-[14px] w-fit font-medium grid place-items-center cursor-pointer">
+          <div
+            className="border border-[#D0D5DD] rounded-lg text-[#344054] h-[40px] px-[14px] w-fit font-medium grid place-items-center cursor-pointer"
+            onClick={(e) => {
+              e.preventDefault();
+              const formattedDate = dayjs().toDate().toLocaleDateString();
+              dateTime.onChangeDate(formattedDate);
+            }}
+          >
             Today
           </div>
 
           <div className="flex">
-            <div className="p-2 rounded cursor-pointer hover:-translate-x-1 transition-transform">
+            <div
+              className="p-2 rounded cursor-pointer hover:-translate-x-1 transition-transform"
+              onClick={handlePreviousDate}
+            >
               <img
                 src={arrowRightIcon}
                 alt={arrowRightIcon}
@@ -123,7 +155,10 @@ const Controller = ({
                 className="rotate-180"
               />
             </div>
-            <div className="p-2 rounded cursor-pointer hover:translate-x-1 transition-transform">
+            <div
+              className="p-2 rounded cursor-pointer hover:translate-x-1 transition-transform"
+              onClick={handleNextDate}
+            >
               <img
                 src={arrowRightIcon}
                 alt={arrowRightIcon}
@@ -133,7 +168,7 @@ const Controller = ({
             </div>
           </div>
 
-          <div className="relative z-50 max-w-[220px] w-full">
+          <div className="relative z-50 max-w-[230px] w-full">
             <div
               ref={dateTimeRef}
               className="group/date flex gap-[6px] items-center cursor-pointer"
@@ -142,8 +177,8 @@ const Controller = ({
                 setVisibleDateTime((pre) => !pre);
               }}
             >
-              <span className="text-[#475467] text-[18px] leading-6 font-semibold">
-                {dayjs(dateTime.value ?? new Date()).format(
+              <span className="text-[#475467] text-[18px] font-semibold">
+                {dayjs(dateTime.valueDate ?? new Date()).format(
                   "ddd, MMMM D, YYYY"
                 )}
               </span>
@@ -161,12 +196,48 @@ const Controller = ({
             {visibleDateTime ? (
               <div className="absolute top-full right-0 w-[330px]">
                 <DateTimePicker
-                  value={dateTime.value}
-                  onChange={(value) => value && dateTime.onChange(value)}
+                  value={dateTime.valueDate}
+                  onChange={dateTime.onChangeDate}
                 />
               </div>
             ) : null}
           </div>
+
+          <Select
+            allowClear
+            rootClassName="text-[#1F2636] max-w-[120px] w-full"
+            className="h-[40px]"
+            placeholder="Select time"
+            suffixIcon={
+              <img
+                src={arrowRightIcon}
+                alt={arrowRightIcon}
+                width={24}
+                height={24}
+                className="rotate-90"
+              />
+            }
+            value={dateTime.valueTime}
+            onChange={dateTime.onChangeTime}
+          >
+            {DATA_TIME.map((option) => {
+              const currentTimeInt = parseInt(currentTime.replace(":", ""));
+              const optionTimeInt = parseInt(option.value.replace(":", ""));
+
+              return (
+                <Select.Option
+                  key={option.value}
+                  value={option.value}
+                  disabled={
+                    dayjs(dateTime.valueDate).isSame(currentDate, "day") &&
+                    optionTimeInt <= currentTimeInt
+                  }
+                >
+                  {option.label}
+                </Select.Option>
+              );
+            })}
+          </Select>
 
           <Select
             allowClear

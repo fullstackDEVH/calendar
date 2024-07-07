@@ -1,4 +1,4 @@
-import { Calendar, View, dayjsLocalizer } from "react-big-calendar";
+import { Calendar, EventProps, View, dayjsLocalizer } from "react-big-calendar";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import dayjs from "dayjs";
 import React, {
@@ -11,6 +11,9 @@ import React, {
 import Heading from "./components/Heading";
 import Summary from "./components/Summary";
 import Controller from "./components/Controller";
+import avatarIcon from "./assets/Avatar.png";
+
+import CustomEventComponent from "./components/Event/EventDetail";
 
 const localizer = dayjsLocalizer(dayjs);
 
@@ -37,27 +40,27 @@ const servicesData: IService[] = [
 const resourceMap: IResource[] = [
   {
     resourceId: 1,
-    resourceTitle: "Board room",
-    data: { name: "name", avatar: "avatar" },
+    resourceTitle: "David Ryan",
+    data: { name: "name", avatar: avatarIcon },
   },
   {
     resourceId: 2,
-    resourceTitle: "Training room",
-    data: { name: "name", avatar: "avatar" },
+    resourceTitle: "Cris C7",
+    data: { name: "name", avatar: avatarIcon },
   },
   {
     resourceId: 3,
-    resourceTitle: "Meeting room 1",
-    data: { name: "name", avatar: "avatar" },
+    resourceTitle: "Neymar.JR",
+    data: { name: "name", avatar: avatarIcon },
   },
   {
     resourceId: 4,
-    resourceTitle: "Meeting room 2",
-    data: { name: "name", avatar: "avatar" },
+    resourceTitle: "K.Debroun",
+    data: { name: "name", avatar: avatarIcon },
   },
 ];
 
-interface IEvent {
+export interface IEvent {
   id: number;
   title: string;
   start: Date;
@@ -67,8 +70,6 @@ interface IEvent {
 }
 
 const MyCalendar = () => {
-  const [date, onChange] = useState<string>("");
-
   const [myEvents, setEvents] = useState<IEvent[]>(() => {
     const savedEvents = localStorage.getItem("myEvents");
     const eventParse: IEvent[] = savedEvents ? JSON.parse(savedEvents) : [];
@@ -89,24 +90,46 @@ const MyCalendar = () => {
   const [selectectedResource, setSelectedResource] = useState<number | null>(
     null
   );
-  const [time, setTime] = useState<string>("");
-  const [selectedService, setSelectedServices] = useState<string[]>([]);
-  const [selectedDateTime, setSelectedDateTime] = useState<Date | null>(
-    new Date()
+  const [selectedService, setSelectedServices] = useState<IService[]>([]);
+  const [selectedDate, setSelectedDate] = useState<string>(
+    dayjs().toDate().toLocaleDateString()
   );
-  const elementRef = useRef(null);
+  const [time, setSelectedTime] = useState<string>("");
+
+  const wrapperCalendarRef = useRef(null);
+  const popupRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     localStorage.setItem("myEvents", JSON.stringify(myEvents));
   }, [myEvents]);
 
   useEffect(() => {
-    if (!date || !time || !selectectedResource || selectedService.length < 1)
+    if (
+      !selectedDate ||
+      !time ||
+      !selectectedResource ||
+      selectedService.length < 1
+    )
       return;
 
-    const startDay = dayjs(`${date}T${time}`).toDate();
-    const totalMinutes = selectedService.reduce((acc, time) => {
-      const minutes = parseInt(time.split(" ")[0], 10);
+    const combineDateTime = (date: string, time: string) => {
+      const dateFormats = ["DD/MM/YYYY", "M/D/YYYY"];
+      const parsedDate = dayjs(date, dateFormats, true);
+
+      if (!parsedDate.isValid()) {
+        alert("Invalid date format");
+        return;
+      }
+
+      const combinedDateTime = parsedDate.format("YYYY-MM-DD") + `T${time}:00`;
+
+      return dayjs(combinedDateTime).toDate();
+    };
+
+    const startDay = combineDateTime(selectedDate, time);
+    if (!startDay) return;
+    const totalMinutes = selectedService.reduce((acc, service) => {
+      const minutes = parseInt(service.time.split(" ")[0], 10);
       return acc + minutes;
     }, 0);
     const endDay = dayjs(startDay).add(totalMinutes, "minute").toDate();
@@ -117,25 +140,21 @@ const MyCalendar = () => {
       start: startDay,
       end: endDay,
       resourceId: selectectedResource,
-      data: selectedService.map((service) => ({
-        name: service,
-        time: service,
-      })),
+      data: selectedService,
     });
-  }, [date, time, selectectedResource, selectedService]);
+  }, [selectedDate, time, selectectedResource, selectedService]);
 
   const handleClear = useCallback(() => {
     setEvent(null);
-    setTime("");
     setSelectedServices([]);
     if (!isMobile) setSelectedResource(null);
   }, [isMobile]);
 
   useEffect(() => {
-    if (date) {
+    if (selectedDate) {
       handleClear();
     }
-  }, [date, handleClear]);
+  }, [selectedDate, handleClear]);
 
   const calcTop = useCallback((dateString: string) => {
     const startOfDay = dayjs().startOf("day");
@@ -154,6 +173,20 @@ const MyCalendar = () => {
     }
     return { persontage: (newTotal / 2400) * 100, distance: newTotal };
   }, []);
+
+  useEffect(() => {
+    const container = document.querySelector(".rbc-time-content");
+    if (!container) return;
+
+    const isSameDate = dayjs(selectedDate).isSame(dayjs(), "day")
+      ? true
+      : false;
+    if (!isSameDate)
+      container?.scrollTo({
+        top: 700,
+        behavior: "smooth",
+      });
+  }, [selectedDate]);
 
   useEffect(() => {
     const columns = document.querySelectorAll(".rbc-day-slot.rbc-time-column");
@@ -180,8 +213,8 @@ const MyCalendar = () => {
       newDiv.style.zIndex = "4";
       newDiv.style.left = "0";
       newDiv.style.right = "0";
-      newDiv.style.height = "1px";
-      newDiv.style.background = "green";
+      newDiv.style.height = "3px";
+      newDiv.style.background = "#EF6820";
       newDiv.style.top = `${possitionTop.persontage}%`;
 
       columns.forEach((column) => {
@@ -205,7 +238,7 @@ const MyCalendar = () => {
   };
 
   useEffect(() => {
-    const element = elementRef.current;
+    const element = wrapperCalendarRef.current;
     if (!element) return;
 
     const resizeObserver = new ResizeObserver((entries) => {
@@ -235,7 +268,7 @@ const MyCalendar = () => {
 
       const isSameDate = isSameDay(
         dayjs().toDate(),
-        date ? dayjs(date).toDate() : dayjs().toDate()
+        selectedDate ? dayjs(selectedDate).toDate() : dayjs().toDate()
       );
 
       let indicator = document.querySelector(
@@ -251,17 +284,18 @@ const MyCalendar = () => {
         indicator = document.createElement("div");
         indicator.className = "rbc-current-time";
         indicator.style.position = "absolute";
-        indicator.style.left = "-38px";
-        indicator.style.width = "38px";
-        indicator.style.height = "20px";
-        indicator.style.color = "red";
-        indicator.style.border = "1px solid red";
+        indicator.style.left = "-54px";
+        indicator.style.boxSizing = "content-box";
+        indicator.style.width = "48px";
+        indicator.style.height = "22px";
+        indicator.style.color = "#2E90FA";
+        indicator.style.border = "1px solid #2E90FA";
         indicator.style.fontSize = "14px";
         indicator.style.textAlign = "center";
-        indicator.style.fontWeight = "600";
+        indicator.style.fontWeight = "500";
         indicator.style.background = "white";
-        indicator.style.borderRadius = "12px";
-        indicator.style.transform = "translateY(-50%)";
+        indicator.style.borderRadius = "8px";
+        indicator.style.transform = "translateY(-36%)";
         indicator.style.top = `${calcTop(content).persontage}%`;
         indicator.innerText = content;
 
@@ -281,10 +315,13 @@ const MyCalendar = () => {
     return () => {
       clearInterval(interval);
     };
-  }, [date, isMobile, selectectedResource, calcTop]);
+  }, [selectedDate, isMobile, selectectedResource, calcTop]);
 
   const handleChangeServices = (value: string[]) => {
-    setSelectedServices(value);
+    const selected = value.map(
+      (val) => servicesData.find((service) => service.time === val)!
+    );
+    setSelectedServices(selected);
   };
 
   const handleChangeResource = (value: string) => {
@@ -295,10 +332,9 @@ const MyCalendar = () => {
     setChooseEvent(event);
   }, []);
 
-  const { defaultDate, scrollToTime, formats } = useMemo(
+  const { defaultDate, formats } = useMemo(
     () => ({
       defaultDate: dayjs().toDate(),
-      scrollToTime: dayjs().toDate(),
       formats: {
         timeGutterFormat: (date: any, culture: any, localizer: any) =>
           localizer.format(date, "HH:mm", culture),
@@ -326,24 +362,8 @@ const MyCalendar = () => {
     return resource;
   }, [isMobile, selectectedResource, resource]);
 
-  useEffect(() => {
-    window.addEventListener("appinstalled", () => {
-      console.log("INSTALL: Success");
-    });
-  }, []);
-
   const [view, setView] = useState<View>("day");
   const onView = useCallback((newView: View) => setView(newView), [setView]);
-
-  // const dayPropGetter = useCallback((date, resourceId) => {
-  //   // console.log(resourceId);
-  //   // ({
-  //   //   ...(moment(date).day() === 2 && {
-  //   //     className: 'tuesday',
-  //   //   }),
-  //   // })
-  //   return {};
-  // }, []);
 
   const handleCreateEvent = () => {
     if (!event) return;
@@ -351,13 +371,135 @@ const MyCalendar = () => {
     handleClear();
   };
 
+  const onNavigate = useCallback(
+    (newDate: Date) => setSelectedDate(newDate.toLocaleDateString()),
+    [setSelectedDate]
+  );
+
+  const resourceHeader = useCallback(
+    (resourceId: number, label: string, avatar?: string) => {
+      return (
+        <div
+          style={{
+            height: 50,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            gap: 12,
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+
+            setSelectedResource((pre) =>
+              pre === resourceId ? null : resourceId
+            );
+          }}
+        >
+          <img
+            src={avatar ? avatar : avatarIcon}
+            alt={avatar ? avatar : avatarIcon}
+            className="rounded-full w-12 h-12"
+          />
+          <div>
+            <h3 className="text-[#101828] text-[18px] leading-5 font-medium line-clamp-1 break-all">
+              {label}
+            </h3>
+            <div className="border border-[#ABEFC6] w-[69px] h-[22px] rounded-full grid place-items-center">
+              <span className="text-[#067647] text-[12px] leading-[18px] font-medium">
+                Senior
+              </span>
+            </div>
+          </div>
+        </div>
+      );
+    },
+    []
+  );
+
+  const eventCustom = useCallback(
+    (p: EventProps<IEvent>) => {
+      const services: IService[] = p.event.data;
+      const startTime = formatTime(p.event.start);
+      const endTime = formatTime(p.event.end);
+
+      return (
+        <CustomEventComponent
+          event={p.event}
+          startTime={startTime}
+          endTime={endTime}
+          services={services}
+          chooseEvent={chooseEvent}
+          setChooseEvent={setChooseEvent}
+          myEvents={myEvents}
+          setEvents={setEvents}
+          popupRef={popupRef}
+        />
+      );
+    },
+    [myEvents, chooseEvent]
+  );
+
+  const hasClass = (element: Node | null, className: string): boolean => {
+    while (element) {
+      if (
+        (element as HTMLElement).classList &&
+        (element as HTMLElement).classList.contains(className)
+      ) {
+        return true;
+      }
+      element = element.parentNode as Node;
+    }
+    return false;
+  };
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (!chooseEvent) return;
+
+      if (!hasClass(e.target as Node, "eventCustom")) {
+        setChooseEvent(null);
+      }
+    };
+
+    window.addEventListener("click", handleClick);
+
+    return () => {
+      window.removeEventListener("click", handleClick);
+    };
+  }, [chooseEvent]);
+
+  useEffect(() => {
+    const containerScroll = document.querySelector(".rbc-time-content");
+
+    if (!popupRef.current || !containerScroll) return;
+
+    const containerRect = containerScroll.getBoundingClientRect();
+    const popupRect = popupRef.current.getBoundingClientRect();
+    const elements = document.querySelectorAll(".rbc-day-slot.rbc-time-column");
+
+    if (popupRect.left < containerRect.left) {
+      popupRef.current.style.right = "-80%";
+
+      elements.forEach((element, indexc) => {
+        const zIndex = 15;
+        (element as HTMLElement).style.zIndex = `${zIndex - indexc}`;
+      });
+    } else {
+      elements.forEach((element, indexc) => {
+        const zIndex = 12;
+        (element as HTMLElement).style.zIndex = `${zIndex + indexc}`;
+      });
+    }
+  }, [chooseEvent]);
+
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <Heading />
       <Summary />
       <Controller
         service={{
-          value: selectedService,
+          value: selectedService.map((service) => service.time),
           options: servicesData.map((service) => ({
             label: service.name,
             value: service.time,
@@ -373,15 +515,23 @@ const MyCalendar = () => {
           onChange: handleChangeResource,
         }}
         dateTime={{
-          value: selectedDateTime,
-          onChange: (value) => setSelectedDateTime(value),
+          valueDate: selectedDate
+            ? dayjs(selectedDate).toDate()
+            : dayjs().toDate(),
+          onChangeDate: (date: string) => {
+            setSelectedDate(date);
+          },
+          valueTime: time ? time : null,
+          onChangeTime: (time: string) => {
+            setSelectedTime(time);
+          },
         }}
         handleCreateEvent={handleCreateEvent}
         handleClear={handleClear}
       />
 
       <div
-        ref={elementRef}
+        ref={wrapperCalendarRef}
         style={{
           width: "100%",
           height: "100%",
@@ -394,10 +544,13 @@ const MyCalendar = () => {
           localizer={localizer}
           onView={onView}
           view={view}
-          date={date ? dayjs(date).toDate() : dayjs().toDate()}
+          date={selectedDate ? dayjs(selectedDate).toDate() : dayjs().toDate()}
           allDayMaxRows={4}
-          // dayPropGetter={dayPropGetter}
-          scrollToTime={scrollToTime}
+          scrollToTime={
+            !dayjs(selectedDate).isSame(dayjs(), "day")
+              ? new Date(selectedDate)
+              : new Date()
+          }
           toolbar={false}
           formats={formats}
           slotPropGetter={(_, resourceId) => {
@@ -405,16 +558,12 @@ const MyCalendar = () => {
               style: {
                 height: 80,
                 backgroundColor:
-                  resourceId === selectectedResource ? "seashell" : "unset",
+                  resourceId === selectectedResource ? "#F2F4F7" : "unset",
               },
             };
           }}
+          onNavigate={onNavigate}
           components={{
-            timeGutterHeader: () => {
-              return date
-                ? dayjs(`${date}`).format("dddd MMM DD")
-                : dayjs().format("dddd MMM DD");
-            },
             timeGutterWrapper: (pre: any) => {
               const children: JSX.Element = pre.children;
               return React.cloneElement(
@@ -427,19 +576,24 @@ const MyCalendar = () => {
                       id="rbc-current-time-from-12"
                       style={{
                         position: "absolute",
+                        left: "6px",
                         zIndex: 10,
-                        right: 0,
-                        height: 20,
-                        width: 40,
-                        borderRadius: 8,
-                        transform: "translateY(-50%)",
-                        border: "1px solid green",
-                        top: `${calcTop(time).persontage}%`,
-                        background: "rgba(255,255,255,0.1)",
+                        boxSizing: "content-box",
+                        width: "48px",
+                        height: "22px",
+                        color: "#EF6820",
+                        border: "1px solid #EF6820",
+                        fontSize: "14px",
+                        textAlign: "center",
+                        fontWeight: "500",
+                        background: "white",
+                        borderRadius: "8px",
                         backdropFilter: "blur(10px)",
+                        top: `${calcTop(time).persontage}%`,
+                        transform: "translateY(-50%)",
                       }}
                     >
-                      <div style={{ color: "green", fontWeight: 600 }}>
+                      <div style={{ color: "#EF6820", fontWeight: 600 }}>
                         {time}
                       </div>
                     </div>
@@ -447,124 +601,13 @@ const MyCalendar = () => {
                 </>
               );
             },
-            event: (p) => {
-              const services: IService[] = p.event.data;
-              return (
-                <div style={{ position: "relative" }}>
-                  {services.map((service, index) => (
-                    <div key={index}>{service.name}</div>
-                  ))}
-                  {chooseEvent?.id === p.event.id &&
-                  myEvents.find((event) => event.id === chooseEvent?.id) ? (
-                    <div
-                      style={{
-                        position: "absolute",
-                        top: 0,
-                        right: 0,
-                        background: "white",
-                      }}
-                    >
-                      <div
-                        className=""
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEvents((pre) => {
-                            const newEvents = pre.filter(
-                              (event) => event.id !== chooseEvent?.id
-                            );
-                            return newEvents;
-                          });
-                        }}
-                      >
-                        <p style={{ color: "black", fontSize: "16" }}>
-                          Delete Event
-                        </p>
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
-              );
-            },
-            // eventWrapper: (dataa : any) => {
-            //   console.log(dataa);
-
-            //   return 123
-            // },
-            resourceHeader: (prop) => {
-              return (
-                <div
-                  style={{
-                    height: 50,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    cursor: "pointer",
-                  }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedResource(prop.resource.resourceId);
-                  }}
-                >
-                  {prop.label} - {prop.resource.data.name} -{" "}
-                  {prop.resource.data.avatar}
-                </div>
-              );
-            },
-            // dayColumnWrapper: (re: any) => {
-            //   const data: (boolean | object | [])[] = re.children;
-            //   const currentResource = re.resource;
-            //   console.log(re);
-
-            //   return (
-            //     <DayColumn
-            //       ref={containerRef}
-            //       key={currentResource}
-            //       className={re.className}
-            //       style={{
-            //         background:
-            //           currentResource === selectectedResource ? "pink" : "",
-            //       }}
-            //     >
-            //       {time ? (
-            // <div
-            //   id="rbc-current-time-from"
-            //   style={{
-            //     position: "absolute",
-            //     zIndex: 4,
-            //     left: 0,
-            //     right: 0,
-            //     height: 1,
-            //     background: "red",
-            //     top: `${calcTop()}%`,
-            //   }}
-            // ></div>
-            //       ) : null}
-            //       {data.map((item, index) => {
-            //         if (Array.isArray(item)) {
-            //           return (
-            //             <>
-            //               {item.map((subItem, ind) => {
-            //                 if (
-            //                   typeof item === "object" &&
-            //                   React.isValidElement(subItem)
-            //                 ) {
-            //                   return React.cloneElement(subItem, { key: ind });
-            //                 }
-            //                 return null;
-            //               })}
-            //             </>
-            //           );
-            //         } else if (
-            //           typeof item === "object" &&
-            //           React.isValidElement(item)
-            //         ) {
-            //           return React.cloneElement(item, { key: index });
-            //         }
-            //         return null;
-            //       })}
-            //     </DayColumn>
-            //   );
-            // },
+            event: eventCustom,
+            resourceHeader: (prop) =>
+              resourceHeader(
+                prop.resource.resourceId,
+                prop.label as string,
+                prop.resource.data.avatar
+              ),
           }}
           defaultDate={defaultDate}
           resourceIdAccessor="resourceId"
@@ -576,7 +619,6 @@ const MyCalendar = () => {
           style={{ height: "100%" }}
           // step={15}
           // timeslots={2}
-          // scrollToTime={scrollToTime}
           selected={true}
           onSelectEvent={handleSelectEvent}
         />

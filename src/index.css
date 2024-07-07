@@ -58,14 +58,96 @@ body {
   min-width: 86px;
 }
 
+.rbc-current-time-indicator {
+  pointer-events: none;
+  background: linear-gradient(to right, #2e90fa 70%, rgba(255, 255, 255, 0) 0%)
+      repeat-x,
+    linear-gradient(to bottom, #2e90fa 70%, rgba(255, 255, 255, 0) 0%) repeat-y;
+  background-size: 10px 3px, 3px 10px;
+  border: 2px solid transparent;
+}
+
+.rbc-day-slot.rbc-time-column {
+  z-index: 11;
+}
+
+.rbc-day-slot.rbc-time-column.rbc-now.rbc-today {
+  background: white;
+}
+
+/* event */
+.rbc-day-slot.rbc-time-column .rbc-events-container {
+  margin-right: 0;
+}
+
+.rbc-events-container .rbc-event-label {
+  display: none;
+}
+
+.rbc-events-container > div {
+  padding: 0;
+  background: transparent;
+}
+
+.rbc-events-container .rbc-event {
+  border: 0;
+  overflow: unset;
+}
+
+/* header */
+.rbc-time-header-content .rbc-allday-cell {
+  display: none;
+}
+
+/* body */
+.rbc-time-content .rbc-day-slot.rbc-time-column .rbc-timeslot-group {
+  border-color: #eaecf0;
+}
+.rbc-time-content
+  .rbc-day-slot.rbc-time-column
+  .rbc-timeslot-group
+  .rbc-time-slot {
+  border: 0;
+}
+
+/* gutter */
 .rbc-label.rbc-time-header-gutter {
-  max-width: 86px !important;
-  min-width: 86px !important;
+  max-width: 60px !important;
+  min-width: 60px !important;
+}
+
+.rbc-time-content {
+  border: 0;
+}
+
+.rbc-time-gutter.rbc-time-column .rbc-timeslot-group {
+  border-bottom: 0;
+  max-width: 60px !important;
+  min-width: 60px !important;
+}
+
+.rbc-time-gutter.rbc-time-column .rbc-time-slot {
+  position: relative;
   display: flex;
-  align-items: center;
   justify-content: center;
-  text-align: center;
-  font-weight: 600;
+}
+
+.rbc-time-gutter.rbc-time-column .rbc-time-slot .rbc-label {
+  position: absolute;
+  top: -6px;
+  color: #101828;
+  size: 14px;
+  font-weight: 500;
+}
+
+/* antd */
+.ant-select-selector {
+  border: 1px solid #d0d5dd;
+}
+.ant-select-selection-placeholder {
+  color: #667085 !important;
+  size: 14px;
+  font-weight: 500;
 }
 
 .item_options {
@@ -76,23 +158,4 @@ body {
 
 .item_options:hover {
   background: grey;
-}
-
-.rbc-current-time-indicator {
-  background: red;
-}
-
-.rbc-day-slot.rbc-time-column {
-  z-index: 11;
-}
-
-
-/* antd */
-.ant-select-selector {
-  border : 1px solid #D0D5DD;
-}
-.ant-select-selection-placeholder {
-  color: #667085 !important;
-  size: 14px;
-  font-weight: 500;
 }
