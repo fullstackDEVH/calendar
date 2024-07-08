@@ -6,10 +6,11 @@ interface EventProps {
   event: IEvent;
   startTime: string;
   endTime: string;
+  isEventamp: boolean;
   services: { name: string }[];
   chooseEvent: IEvent | null;
   setChooseEvent: (event: IEvent) => void;
-  myEvents: any[];
+  myEvents: IEvent[];
   setEvents: React.Dispatch<React.SetStateAction<IEvent[]>>;
   popupRef: React.RefObject<HTMLDivElement>;
 }
@@ -24,17 +25,25 @@ const CustomEventComponent: React.FC<EventProps> = ({
   myEvents,
   setEvents,
   popupRef,
+  isEventamp,
 }) => {
   return (
     <div
-      onClick={() => setChooseEvent(event)}
-      className="eventCustom h-full relative flex items-center justify-center bg-[#DAE9F8] border-l-4 rounded-lg border-[#6941C6]"
+      onClick={(e) => {
+        e.stopPropagation();
+        setChooseEvent(event);
+      }}
+      className={`eventCustom h-full relative flex items-center justify-center shadow-md ${
+        isEventamp ? "bg-white outline-4 outline-[#D6BBFB]" : "bg-[#DAE9F8]"
+      } border-l-4 rounded-lg border-[#6941C6]`}
     >
       <div className="flex flex-col items-center gap-1">
         <h4 className="text-txt-primary text-[14px] font-semibold leading-[17px]">
           {startTime} - {endTime}
         </h4>
-        <p className="text-[#2C2C2C] font-bold text-[14px]">Olivia Rhye</p>
+        <p className="text-[#2C2C2C] font-bold text-[14px] line-clamp-1 break-all">
+          {event.data.userInfor.username}
+        </p>
         <div className="flex flex-wrap items-center justify-center w-full">
           <p className="text-[14px] font-medium leading-[17px] text-[#344054]">
             {services.map((service) => service.name).join(", ")}

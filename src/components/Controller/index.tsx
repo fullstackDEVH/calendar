@@ -33,6 +33,16 @@ interface IProps {
     valueTime: string | null;
     onChangeTime: (date: string) => void;
   };
+  input: {
+    userName: {
+      value: string;
+      onChange: (value: string) => void;
+    };
+    phone: {
+      value: string;
+      onChange: (value: string) => void;
+    };
+  };
   handleCreateEvent: () => void;
   handleClear: () => void;
 }
@@ -41,6 +51,7 @@ const Controller = ({
   service,
   resource,
   dateTime,
+  input,
   handleCreateEvent,
   handleClear,
 }: IProps) => {
@@ -121,14 +132,16 @@ const Controller = ({
         <div className="w-full bg-white rounded-lg py-[6px] h-14 flex justify-center items-center gap-3">
           <input
             type="text"
-            value={"+21 2302 9764"}
-            readOnly
+            value={input.phone.value}
+            onChange={(e) => input.phone.onChange(e.target.value)}
+            placeholder="Enter phone"
             className="outline-none border border-[#D0D5DD] rounded-lg text-[#101828] h-[40px] px-[14px] w-full max-w-[145px] font-medium"
           />
           <input
             type="text"
-            value={"David"}
-            readOnly
+            value={input.userName.value}
+            onChange={(e) => input.userName.onChange(e.target.value)}
+            placeholder="Enter username"
             className="outline-none border border-[#D0D5DD] rounded-lg text-[#101828] h-[40px] px-[14px] w-full max-w-[171px] font-medium"
           />
           <div
@@ -243,7 +256,7 @@ const Controller = ({
             allowClear
             rootClassName="text-[#1F2636] max-w-[160px] w-full"
             className="h-[40px]"
-            placeholder="Select resource"
+            placeholder="Select staff"
             suffixIcon={
               <img
                 src={arrowRightIcon}

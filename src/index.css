@@ -49,7 +49,7 @@ body {
 }
 
 .rbc-time-slot {
-  text-align: left;
+  text-align: center;
 }
 
 .rbc-timeslot-group {
@@ -78,6 +78,7 @@ body {
 /* event */
 .rbc-day-slot.rbc-time-column .rbc-events-container {
   margin-right: 0;
+  z-index: 4;
 }
 
 .rbc-events-container .rbc-event-label {
@@ -95,14 +96,25 @@ body {
 }
 
 /* header */
+.rbc-time-header-content {
+  position: relative;
+  z-index: 20;
+}
+
 .rbc-time-header-content .rbc-allday-cell {
   display: none;
 }
 
+.rbc-row.rbc-row-resource .rbc-header {
+  overflow: unset;
+  padding: 0;
+}
+
 /* body */
 .rbc-time-content .rbc-day-slot.rbc-time-column .rbc-timeslot-group {
-  border-color: #eaecf0;
+  border: 1.9px solid #eaecf0;
 }
+
 .rbc-time-content
   .rbc-day-slot.rbc-time-column
   .rbc-timeslot-group

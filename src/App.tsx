@@ -12,8 +12,12 @@ import Heading from "./components/Heading";
 import Summary from "./components/Summary";
 import Controller from "./components/Controller";
 import avatarIcon from "./assets/Avatar.png";
+import slideNextIcon from "./assets/slide_next.svg";
+import slidePreviousIcon from "./assets/slide_previous.svg";
 
 import CustomEventComponent from "./components/Event/EventDetail";
+import EventBlocked from "./components/Event/EventBlocked";
+import { message } from "antd";
 
 const localizer = dayjsLocalizer(dayjs);
 
@@ -29,12 +33,11 @@ export interface IResource {
 }
 
 const servicesData: IService[] = [
-  { name: "Service 1", time: "30 min" },
-  { name: "Service 2", time: "15 min" },
-  { name: "Service 3", time: "20 min" },
-  { name: "Service 4", time: "60 min" },
-  { name: "Service 5", time: "45 min" },
-  { name: "Service 6", time: "90 min" },
+  { name: "Gel Mani", time: "30 min" },
+  { name: "Pedi", time: "20 min" },
+  { name: "Polish Nails", time: "60 min" },
+  { name: "Hands", time: "45 min" },
+  { name: "Toes", time: "90 min" },
 ];
 
 const resourceMap: IResource[] = [
@@ -55,7 +58,27 @@ const resourceMap: IResource[] = [
   },
   {
     resourceId: 4,
-    resourceTitle: "K.Debroun",
+    resourceTitle: "K.Debroyne",
+    data: { name: "name", avatar: avatarIcon },
+  },
+  {
+    resourceId: 5,
+    resourceTitle: "KAKA",
+    data: { name: "name", avatar: avatarIcon },
+  },
+  {
+    resourceId: 6,
+    resourceTitle: "Ronadinho",
+    data: { name: "name", avatar: avatarIcon },
+  },
+  {
+    resourceId: 7,
+    resourceTitle: "Gullit",
+    data: { name: "name", avatar: avatarIcon },
+  },
+  {
+    resourceId: 8,
+    resourceTitle: "Ballack",
     data: { name: "name", avatar: avatarIcon },
   },
 ];
@@ -66,10 +89,24 @@ export interface IEvent {
   start: Date;
   end: Date;
   resourceId: number | number[];
-  data: IService[];
+  data: {
+    services: IService[];
+    userInfor: {
+      username: string;
+      phone: string;
+    };
+  };
 }
 
 const MyCalendar = () => {
+  const [messageApi, contextHolder] = message.useMessage();
+
+  const [skip] = useState<number>(4);
+  const [page, setPage] = useState<number>(1);
+
+  const [inputUserName, setInputUserName] = useState<string>("");
+  const [inputPhone, setInputPhone] = useState<string>("");
+
   const [myEvents, setEvents] = useState<IEvent[]>(() => {
     const savedEvents = localStorage.getItem("myEvents");
     const eventParse: IEvent[] = savedEvents ? JSON.parse(savedEvents) : [];
@@ -84,7 +121,7 @@ const MyCalendar = () => {
   const [event, setEvent] = useState<IEvent | null>(null);
   const [chooseEvent, setChooseEvent] = useState<IEvent | null>(null);
 
-  const [resource] = useState<IResource[]>(resourceMap);
+  const [resource, setResource] = useState<IResource[]>([]);
   const [isMobile, setIsMobile] = useState<boolean>(false);
 
   const [selectectedResource, setSelectedResource] = useState<number | null>(
@@ -100,15 +137,24 @@ const MyCalendar = () => {
   const popupRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    setResource(resourceMap.slice((page - 1) * skip, page * skip));
+  }, [page, skip]);
+
+  useEffect(() => {
     localStorage.setItem("myEvents", JSON.stringify(myEvents));
   }, [myEvents]);
 
   useEffect(() => {
+    if (event) {
+      setEvent(null);
+    }
     if (
       !selectedDate ||
       !time ||
       !selectectedResource ||
-      selectedService.length < 1
+      selectedService.length < 1 ||
+      !inputUserName ||
+      !inputPhone
     )
       return;
 
@@ -140,13 +186,30 @@ const MyCalendar = () => {
       start: startDay,
       end: endDay,
       resourceId: selectectedResource,
-      data: selectedService,
+      data: {
+        services: selectedService,
+        userInfor: {
+          phone: inputPhone,
+          username: inputUserName,
+        },
+      },
     });
-  }, [selectedDate, time, selectectedResource, selectedService]);
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    selectedDate,
+    time,
+    selectectedResource,
+    selectedService,
+    inputPhone,
+    inputUserName,
+  ]);
 
   const handleClear = useCallback(() => {
     setEvent(null);
     setSelectedServices([]);
+    setSelectedTime("");
+    setInputPhone(""), setInputUserName("");
     if (!isMobile) setSelectedResource(null);
   }, [isMobile]);
 
@@ -366,7 +429,15 @@ const MyCalendar = () => {
   const onView = useCallback((newView: View) => setView(newView), [setView]);
 
   const handleCreateEvent = () => {
-    if (!event) return;
+    if (!event) {
+      messageApi.open({
+        type: "warning",
+        content:
+          "Please enter complete information such as name, phone number, date and time, service and staff",
+      });
+      return;
+      return;
+    }
     setEvents((pre) => [...pre, event]);
     handleClear();
   };
@@ -381,21 +452,60 @@ const MyCalendar = () => {
       return (
         <div
           style={{
-            height: 50,
+            height: 60,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             cursor: "pointer",
+            position: "relative",
             gap: 12,
           }}
           onClick={(e) => {
             e.stopPropagation();
-
             setSelectedResource((pre) =>
               pre === resourceId ? null : resourceId
             );
           }}
         >
+          {resource[0].resourceId === resourceId ? (
+            <div
+              onClick={(e) => {
+                e.stopPropagation();
+                const totalPage = Math.ceil(resourceMap.length / skip);
+                handleClear();
+                setPage((pre) => (pre - 1 < 1 ? totalPage : pre - 1));
+              }}
+              className="absolute top-1/2 left-[-6%] -translate-y-1/2 transition-all hover:-translate-x-[2px] hover:opacity-85 w-[40px] h-[40px]"
+            >
+              <img
+                src={slidePreviousIcon}
+                alt={slidePreviousIcon}
+                width={40}
+                height={40}
+                className="rounded-full w-full h-full"
+              />
+            </div>
+          ) : null}
+
+          {resource[resource.length - 1].resourceId === resourceId ? (
+            <div
+              onClick={(e) => {
+                e.stopPropagation();
+                const totalPage = Math.ceil(resourceMap.length / skip);
+                handleClear();
+                setPage((pre) => (pre + 1 > totalPage ? 1 : pre + 1));
+              }}
+              className="absolute top-1/2 right-[0%] -translate-y-1/2 transition-all hover:translate-x-[2px] hover:opacity-85 w-[40px] h-[40px]"
+            >
+              <img
+                src={slideNextIcon}
+                alt={slideNextIcon}
+                width={40}
+                height={40}
+                className="rounded-full w-full h-full"
+              />
+            </div>
+          ) : null}
           <img
             src={avatar ? avatar : avatarIcon}
             alt={avatar ? avatar : avatarIcon}
@@ -414,18 +524,24 @@ const MyCalendar = () => {
         </div>
       );
     },
-    []
+    [resource, skip, handleClear]
   );
 
   const eventCustom = useCallback(
     (p: EventProps<IEvent>) => {
-      const services: IService[] = p.event.data;
+      const services: IService[] = p.event.data.services;
       const startTime = formatTime(p.event.start);
       const endTime = formatTime(p.event.end);
+      const specificTime = dayjs(p.event.start);
+      const currentTime = dayjs();
 
-      return (
+      const isVisibleBlock = currentTime.isAfter(specificTime);
+      const isEventamp = event?.id === p.event.id;
+
+      return !isVisibleBlock ? (
         <CustomEventComponent
           event={p.event}
+          isEventamp={isEventamp}
           startTime={startTime}
           endTime={endTime}
           services={services}
@@ -435,9 +551,11 @@ const MyCalendar = () => {
           setEvents={setEvents}
           popupRef={popupRef}
         />
+      ) : (
+        <EventBlocked />
       );
     },
-    [myEvents, chooseEvent]
+    [myEvents, chooseEvent, event]
   );
 
   const hasClass = (element: Node | null, className: string): boolean => {
@@ -494,136 +612,151 @@ const MyCalendar = () => {
   }, [chooseEvent]);
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
-      <Heading />
-      <Summary />
-      <Controller
-        service={{
-          value: selectedService.map((service) => service.time),
-          options: servicesData.map((service) => ({
-            label: service.name,
-            value: service.time,
-          })),
-          onChange: handleChangeServices,
-        }}
-        resource={{
-          value: selectectedResource,
-          options: resourceMap.map((resource) => ({
-            label: resource.resourceTitle,
-            value: `${resource.resourceId}`,
-          })),
-          onChange: handleChangeResource,
-        }}
-        dateTime={{
-          valueDate: selectedDate
-            ? dayjs(selectedDate).toDate()
-            : dayjs().toDate(),
-          onChangeDate: (date: string) => {
-            setSelectedDate(date);
-          },
-          valueTime: time ? time : null,
-          onChangeTime: (time: string) => {
-            setSelectedTime(time);
-          },
-        }}
-        handleCreateEvent={handleCreateEvent}
-        handleClear={handleClear}
-      />
-
-      <div
-        ref={wrapperCalendarRef}
-        style={{
-          width: "100%",
-          height: "100%",
-          flex: 1,
-          overflow: "hidden",
-          paddingBottom: 10,
-        }}
-      >
-        <Calendar
-          localizer={localizer}
-          onView={onView}
-          view={view}
-          date={selectedDate ? dayjs(selectedDate).toDate() : dayjs().toDate()}
-          allDayMaxRows={4}
-          scrollToTime={
-            !dayjs(selectedDate).isSame(dayjs(), "day")
-              ? new Date(selectedDate)
-              : new Date()
-          }
-          toolbar={false}
-          formats={formats}
-          slotPropGetter={(_, resourceId) => {
-            return {
-              style: {
-                height: 80,
-                backgroundColor:
-                  resourceId === selectectedResource ? "#F2F4F7" : "unset",
-              },
-            };
+    <>
+      {contextHolder}
+      <div className="flex flex-col h-full overflow-hidden">
+        <Heading />
+        <Summary />
+        <Controller
+          service={{
+            value: selectedService.map((service) => service.time),
+            options: servicesData.map((service) => ({
+              label: service.name,
+              value: service.time,
+            })),
+            onChange: handleChangeServices,
           }}
-          onNavigate={onNavigate}
-          components={{
-            timeGutterWrapper: (pre: any) => {
-              const children: JSX.Element = pre.children;
-              return React.cloneElement(
-                children,
-                { style: { possition: "relative" } },
-                <>
-                  {pre.children}
-                  {time ? (
-                    <div
-                      id="rbc-current-time-from-12"
-                      style={{
-                        position: "absolute",
-                        left: "6px",
-                        zIndex: 10,
-                        boxSizing: "content-box",
-                        width: "48px",
-                        height: "22px",
-                        color: "#EF6820",
-                        border: "1px solid #EF6820",
-                        fontSize: "14px",
-                        textAlign: "center",
-                        fontWeight: "500",
-                        background: "white",
-                        borderRadius: "8px",
-                        backdropFilter: "blur(10px)",
-                        top: `${calcTop(time).persontage}%`,
-                        transform: "translateY(-50%)",
-                      }}
-                    >
-                      <div style={{ color: "#EF6820", fontWeight: 600 }}>
-                        {time}
-                      </div>
-                    </div>
-                  ) : null}
-                </>
-              );
+          resource={{
+            value: selectectedResource,
+            options: resource.map((resource) => ({
+              label: resource.resourceTitle,
+              value: `${resource.resourceId}`,
+            })),
+            onChange: handleChangeResource,
+          }}
+          input={{
+            userName: {
+              value: inputUserName,
+              onChange: (value: string) => setInputUserName(value),
             },
-            event: eventCustom,
-            resourceHeader: (prop) =>
-              resourceHeader(
-                prop.resource.resourceId,
-                prop.label as string,
-                prop.resource.data.avatar
-              ),
+            phone: {
+              value: inputPhone,
+              onChange: (value: string) => setInputPhone(value),
+            },
           }}
-          defaultDate={defaultDate}
-          resourceIdAccessor="resourceId"
-          resources={calcResource}
-          resourceTitleAccessor="resourceTitle"
-          events={event ? myEvents.concat([event]) : myEvents}
-          // startAccessor="start"
-          // endAccessor="end"
-          style={{ height: "100%" }}
-          // step={15}
-          // timeslots={2}
-          selected={true}
-          onSelectEvent={handleSelectEvent}
+          dateTime={{
+            valueDate: selectedDate
+              ? dayjs(selectedDate).toDate()
+              : dayjs().toDate(),
+            onChangeDate: (date: string) => {
+              setSelectedDate(date);
+            },
+            valueTime: time ? time : null,
+            onChangeTime: (time: string) => {
+              setSelectedTime(time);
+            },
+          }}
+          handleCreateEvent={handleCreateEvent}
+          handleClear={handleClear}
         />
+
+        <div
+          ref={wrapperCalendarRef}
+          style={{
+            width: "100%",
+            height: "100%",
+            flex: 1,
+            overflow: "hidden",
+            paddingBottom: 10,
+          }}
+        >
+          <Calendar
+            localizer={localizer}
+            onView={onView}
+            view={view}
+            date={
+              selectedDate ? dayjs(selectedDate).toDate() : dayjs().toDate()
+            }
+            allDayMaxRows={4}
+            scrollToTime={
+              !dayjs(selectedDate).isSame(dayjs(), "day")
+                ? new Date(selectedDate)
+                : new Date()
+            }
+            toolbar={false}
+            formats={formats}
+            slotPropGetter={(_, resourceId) => {
+              return {
+                style: {
+                  height: 80,
+                  backgroundColor:
+                    resourceId === selectectedResource ? "#F2F4F7" : "unset",
+                },
+              };
+            }}
+            onNavigate={onNavigate}
+            components={{
+              timeGutterWrapper: (pre: any) => {
+                const children: JSX.Element = pre.children;
+                return React.cloneElement(
+                  children,
+                  { style: { possition: "relative" } },
+                  <>
+                    {pre.children}
+                    {time ? (
+                      <div
+                        id="rbc-current-time-from-12"
+                        style={{
+                          position: "absolute",
+                          left: "6px",
+                          zIndex: 10,
+                          boxSizing: "content-box",
+                          width: "48px",
+                          height: "22px",
+                          color: "#EF6820",
+                          border: "1px solid #EF6820",
+                          fontSize: "14px",
+                          textAlign: "center",
+                          fontWeight: "500",
+                          background: "white",
+                          borderRadius: "8px",
+                          backdropFilter: "blur(10px)",
+                          top: `${calcTop(time).persontage}%`,
+                          transform: "translateY(-50%)",
+                        }}
+                      >
+                        <div style={{ color: "#EF6820", fontWeight: 600 }}>
+                          {time}
+                        </div>
+                      </div>
+                    ) : null}
+                  </>
+                );
+              },
+              event: eventCustom,
+              resourceHeader: (prop) =>
+                resourceHeader(
+                  prop.resource.resourceId,
+                  prop.label as string,
+                  prop.resource.data.avatar
+                ),
+            }}
+            defaultDate={defaultDate}
+            resourceIdAccessor="resourceId"
+            resources={calcResource}
+            resourceTitleAccessor="resourceTitle"
+            events={event ? myEvents.concat([event]) : myEvents}
+            // startAccessor="start"
+            // endAccessor="end"
+            style={{ height: "100%" }}
+            // step={15}
+            // timeslots={2}
+            selected={true}
+            onSelectEvent={handleSelectEvent}
+          />
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 export default MyCalendar;
