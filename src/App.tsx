@@ -321,12 +321,15 @@ const MyCalendar = () => {
   }, []);
 
   useEffect(() => {
+    if(resource.length < 1 ) return;
     const updateIndicator = () => {
       const content = formatTime(new Date());
 
       const wrapper: HTMLElement | null = document.querySelector(
         ".rbc-time-gutter.rbc-time-column + .rbc-day-slot.rbc-time-column"
       );
+      console.log(wrapper);
+      
       if (isMobile && !selectectedResource) return;
 
       const isSameDate = isSameDay(
@@ -378,7 +381,7 @@ const MyCalendar = () => {
     return () => {
       clearInterval(interval);
     };
-  }, [selectedDate, isMobile, selectectedResource, calcTop]);
+  }, [selectedDate, isMobile, selectectedResource, calcTop, resource]);
 
   const handleChangeServices = (value: string[]) => {
     const selected = value.map(
